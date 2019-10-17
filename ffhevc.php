@@ -90,7 +90,7 @@ function getDefaultOptions($args) {
   $options['args']['force'] = false;
   $options['args']['skip'] = false;
   $options['args']['override'] = false;
-  $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig)
+  $options['args']['keeporiginal'] = true; //if true, the original file will be retained. (renamed as filename.orig)
   $options['args']['keepowner'] = false;  // if true, the original file owner will be used in the new file.
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['language'] = "eng";  // If language stream is specified, pull this one
@@ -262,7 +262,7 @@ function processItem($dir, $item, $options, $args) {
 
   //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
-    $cmdln = "mkvmerge -v -s '" . $options['args']['language'] . "'" .
+    $cmdln = "mkvmerge --video-tracks '" . $options['args']['language'] . "' --audio-tracks '" . $options['args']['language'] . "' --subtitle-tracks '" . $options['args']['language'] . "'" .
       " --language 0:" . $options['args']['language'] .
       " --language 1:" . $options['args']['language'] .
       " --track-order 0:0,0:1,0:2" .
@@ -328,7 +328,7 @@ function processItem($dir, $item, $options, $args) {
     if (
       (
       ($info['format']['probe_score'] == 100) &&
-      ($info['format']['size'] < (filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")))
+      (((int) $info['format']['size']) <= (filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")))
       ) || ($options['args']['force'])
     ) {
       echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . formatBytes(filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig"), 2, true) . " [orig] - " . formatBytes($info['format']['size'], 2, true) . " [new] = \033[01;32m" . formatBytes((filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig") - $info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
@@ -343,12 +343,12 @@ function processItem($dir, $item, $options, $args) {
       }
     }
     else {
-      print "Rollback: " . $file['basename'] . "\n";
+      print "Rollback: " . $file['basename'] . " : ";
       if ($info['format']['probe_score'] != 100) {
-        print "error:  probe_score " . $info['format']['probe_score'] . "\n";
+        print "reason =  probe_score " . $info['format']['probe_score'] . "\n";
       }
-      if ($info['format']['size'] < filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")) {
-        print "error:: original filesize is smaller\n";
+      if ($info['format']['size'] > filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")) {
+        print "reason = original filesize is smaller by (" . formatBytes(($info['format']['size'] - filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")), 0, false) . ")\n";
       }
       $exclude = true;
       if (file_exists($file['filename'] . ".hevc")) {
@@ -486,7 +486,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -metadata:s:v:0 bps=" . $options['video']['bps'] .
         " -metadata:s:v:0 title= ";
     }
-    $options['args']['map'] .= "-map 0:" . $info['video']['index'];
+    $options['args']['map'] .= " -map 0:v? ";
   }
 
 //Audio
@@ -554,18 +554,31 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $options['audio']['bitrate'] = $info['audio']['bitrate'];
         $options['audio']['bps'] = $info['audio']['bps'];
       }
-      if ($info['audio']['channels'] < $options['audio']['channels']) {
+      if ($info['audio']['channels'] < $options['audio']['channels'] || !isset($options['audio']['channels'])) {
         $options['audio']['channels'] = $info['audio']['channels'];
       }
-      if ($info['audio']['sample_rate'] < $options['audio']['sample_rate']) {
+      if ($info['audio']['sample_rate'] < $options['audio']['sample_rate'] || !isset($options['audio']['sample_rate'])) {
         $options['audio']['sample_rate'] = $info['audio']['sample_rate'];
       }
       //Set audio args
-      $options['args']['audio'] = "-acodec " . $options['audio']['codec'] .
-        " -ac " . $options['audio']['channels'] .
-        " -ab " . $options['audio']['bitrate'] .
-        " -ar " . $options['audio']['sample_rate'] .
-        " -async 1";
+      if (
+        isset($options['audio']['codec']) &&
+        isset($options['audio']['channels']) &&
+        isset($options['audio']['bitrate']) &&
+        isset($options['audio']['sample_rate'])
+      ) {
+        $options['args']['audio'] = "-acodec " . $options['audio']['codec'] .
+          " -ac " . $options['audio']['channels'] .
+          " -ab " . $options['audio']['bitrate'] .
+          " -ar " . $options['audio']['sample_rate'] .
+          " -async 1";
+      }
+      else {
+        $options['args']['audio'] = "-acodec copy";
+        $options['audio']['channels'] = isset($info['audio']['channels']) ? $info['audio']['channels'] : '';
+        $options['audio']['bitrate'] = isset($info['audio']['bitrate']) ? $info['audio']['bitrate'] : 0;
+        $options['audio']['sample_rate'] = isset($info['audio']['sample_rate']) ? $info['audio']['sample_rate'] : '';
+      }
       $options['args']['meta'] .= " -metadata:s:a:0 language=" . $options['args']['language'] . " " .
         " -metadata:s:a:0 codec_name=" . $options['audio']['codec'] .
         " -metadata:s:a:0 channels=" . $options['audio']['channels'] .
@@ -574,7 +587,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -metadata:s:a:0 bps=" . $options['audio']['bps'] .
         " -metadata:s:a:0 title= ";
     }
-    $options['args']['map'] .= " -map 0:" . $info['audio']['index'];
+    $options['args']['map'] .= " -map 0:a? ";
   }
 
 //Subtexts
@@ -611,7 +624,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       if (!array_key_exists($vtag, $keep_vtags)) {
         $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=";
       }
-      if (preg_match('/^mkvmerge/', $vval)) {
+      if (preg_match('/^mkvmerge/', $vval) && !$options['args']['force']) {
         $options['args']['skip'] = true;
       }
     }
@@ -694,7 +707,6 @@ function ffprobe($file, $options) {
         case "video":
           if (empty($info['video'])) {
             $vtags = array();
-            $info['video']['index'] = getXmlAttribute($stream, "index");
             $info['video']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['video']['codec'] = getXmlAttribute($stream, "codec_name");
             $info['video']['pix_fmt'] = getXmlAttribute($stream, "pix_fmt");
@@ -726,7 +738,6 @@ function ffprobe($file, $options) {
         case "audio":
           if (empty($info['audio'])) {
             $atags = array();
-            $info['audio']['index'] = getXmlAttribute($stream, "index");
             $info['audio']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['audio']['codec'] = getXmlAttribute($stream, "codec_name");
             $info['audio']['channels'] = getXmlAttribute($stream, "channels");
@@ -736,10 +747,11 @@ function ffprobe($file, $options) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $atags[$tag_key] = $tag_val;
-              //print "\n" . $tag_key . " : " . $tag_val . "\n";
+//              print "\n" . $tag_key . " : " . $tag_val . "\n";
               if ($tag_key == "language") {
                 if ($tag_val !== $options['args']['language']) {
                   $info['audio'] = array();
+                  break;
                 }
                 else {
                   $info['audio']['language'] = $tag_val;
@@ -765,7 +777,6 @@ function ffprobe($file, $options) {
           }
           break;
         case "subtitle":
-          $info['subtitle']['index'] = getXmlAttribute($stream, "index");
           $info['subtitle']['codec_type'] = getXmlAttribute($stream, "codec_type");
           $info['subtitle']['codec'] = getXmlAttribute($stream, "codec_name");
           break;
