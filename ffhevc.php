@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20190402.0606;
+$VERSION = 20191017.1333;
 
 //Initialization and Command Line interface stuff
 $dirs = array();
@@ -262,10 +262,11 @@ function processItem($dir, $item, $options, $args) {
 
   //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
-    $cmdln = "mkvmerge --video-tracks '" . $options['args']['language'] . "' --audio-tracks '" . $options['args']['language'] . "' --subtitle-tracks '" . $options['args']['language'] . "'" .
-      " --language 0:" . $options['args']['language'] .
-      " --language 1:" . $options['args']['language'] .
-      " --track-order 0:0,0:1,0:2" .
+//    $cmdln = "mkvmerge --video-tracks '" . $options['args']['language'] . "' --audio-tracks '" . $options['args']['language'] . "' --subtitle-tracks '" . $options['args']['language'] . "'" .
+    $cmdln = "mkvmerge --default-language '" . $options['args']['language'] . "'" .
+//      " --language 0:" . $options['args']['language'] .
+//      " --language 1:" . $options['args']['language'] .
+//      " --track-order 0:0,0:1,0:2" .
       " -o '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
     print "\n\n\033[01;32m${cmdln}\033[0m\n";
     system("${cmdln} 2>&1");
@@ -407,6 +408,10 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $codec_name = $options['video']['codec_name'];
     $options['video']['vps'] = round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) . "k";
     $options['video']['bps'] = (round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) * 1000);
+
+    if (empty($info['video']['bitrate']) || !isset($info['video']['bitrate'])) {
+      $info['video']['bitrate'] = 0;
+    }
 
     if (
       preg_match(strtolower("/$codec_name/"), $info['video']['codec']) &&
