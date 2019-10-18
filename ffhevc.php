@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191018.0635;
+$VERSION = 20191018.0928;
 
 //Initialization and Command Line interface stuff
 $dirs = array();
@@ -90,7 +90,7 @@ function getDefaultOptions($args) {
   $options['args']['force'] = false;
   $options['args']['skip'] = false;
   $options['args']['override'] = false;
-  $options['args']['keeporiginal'] = true; //if true, the original file will be retained. (renamed as filename.orig)
+  $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig)
   $options['args']['keepowner'] = false;  // if true, the original file owner will be used in the new file.
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['language'] = "eng";  // If language stream is specified, keep this track
