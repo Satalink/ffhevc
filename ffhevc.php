@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191017.2028;
+$VERSION = 20191018.0635;
 
 //Initialization and Command Line interface stuff
 $dirs = array();
@@ -93,7 +93,7 @@ function getDefaultOptions($args) {
   $options['args']['keeporiginal'] = true; //if true, the original file will be retained. (renamed as filename.orig)
   $options['args']['keepowner'] = false;  // if true, the original file owner will be used in the new file.
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
-  $options['args']['language'] = "eng";  // If language stream is specified, pull this one
+  $options['args']['language'] = "eng";  // If language stream is specified, keep this track
   $options['args']['delay'] = 300; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
@@ -262,18 +262,38 @@ function processItem($dir, $item, $options, $args) {
 
   //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
-//    $cmdln = "mkvmerge --video-tracks '" . $options['args']['language'] . "' --audio-tracks '" . $options['args']['language'] . "' --subtitle-tracks '" . $options['args']['language'] . "'" .
-    $cmdln = "mkvmerge --default-language '" . $options['args']['language'] . "'" .
-//      " --language 0:" . $options['args']['language'] .
-//      " --language 1:" . $options['args']['language'] .
-//      " --track-order 0:0,0:1,0:2" .
-      " -o '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
-    print "\n\n\033[01;32m${cmdln}\033[0m\n";
-    system("${cmdln} 2>&1");
-    if (file_exists($file['filename'] . ".mkvm")) {
-      $mtime = filemtime($file['basename']);
-      rename($file['filename'] . ".mkvm", $file['basename']);
-      touch($file['basename'], $mtime); //retain original timestamp
+    if (!empty($info['filters']['language'])) {
+      foreach ($info['filters']['language'] as $li => $lf) {
+        $cmdln = "mkvmerge" .
+          " --default-language '" . $options['args']['language'] . "'" .
+          " --video-tracks '!" . $lf . "'" .
+          " --audio-tracks '!" . $lf . "'" .
+          " --subtitle-tracks '" . $options['args']['language'] . "'" .
+          " --track-tags '" . $options['args']['language'] . "'" .
+          " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
+        print "\n\n\033[01;32m${cmdln}\033[0m\n";
+        system("${cmdln} 2>&1");
+        if (file_exists($file['filename'] . ".mkvm")) {
+          $mtime = filemtime($file['basename']);
+          rename($file['filename'] . ".mkvm", $file['basename']);
+          touch($file['basename'], $mtime); //retain original timestamp
+        }
+      }
+    }
+    else {
+      $cmdln = "mkvmerge" .
+        " --language 0:" . $options['args']['language'] .
+        " --language 1:" . $options['args']['language'] .
+        " --subtitle-tracks '" . $options['args']['language'] . "'" .
+        " --track-tags '" . $options['args']['language'] . "'" .
+        " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
+      print "\n\n\033[01;32m${cmdln}\033[0m\n";
+      system("${cmdln} 2>&1");
+      if (file_exists($file['filename'] . ".mkvm")) {
+        $mtime = filemtime($file['basename']);
+        rename($file['filename'] . ".mkvm", $file['basename']);
+        touch($file['basename'], $mtime); //retain original timestamp
+      }
     }
   }
 
@@ -712,6 +732,7 @@ function ffprobe($file, $options) {
         case "video":
           if (empty($info['video'])) {
             $vtags = array();
+            $info['video']['index'] = getXmlAttribute($stream, "index");
             $info['video']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['video']['codec'] = getXmlAttribute($stream, "codec_name");
             $info['video']['pix_fmt'] = getXmlAttribute($stream, "pix_fmt");
@@ -743,6 +764,7 @@ function ffprobe($file, $options) {
         case "audio":
           if (empty($info['audio'])) {
             $atags = array();
+            $info['audio']['index'] = getXmlAttribute($stream, "index");
             $info['audio']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['audio']['codec'] = getXmlAttribute($stream, "codec_name");
             $info['audio']['channels'] = getXmlAttribute($stream, "channels");
@@ -755,6 +777,7 @@ function ffprobe($file, $options) {
 //              print "\n" . $tag_key . " : " . $tag_val . "\n";
               if ($tag_key == "language") {
                 if ($tag_val !== $options['args']['language']) {
+                  $info['filters']['audio']['language'][] = $tag_val;
                   $info['audio'] = array();
                   break;
                 }
@@ -782,6 +805,7 @@ function ffprobe($file, $options) {
           }
           break;
         case "subtitle":
+          $info['subtitle']['index'] = getXmlAttribute($stream, "index");
           $info['subtitle']['codec_type'] = getXmlAttribute($stream, "codec_type");
           $info['subtitle']['codec'] = getXmlAttribute($stream, "codec_name");
           break;
