@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191017.1333;
+$VERSION = 20191017.2028;
 
 //Initialization and Command Line interface stuff
 $dirs = array();
@@ -795,10 +795,10 @@ function ffprobe($file, $options) {
     isset($info['audio'])
   ) {
     print "\033[01;34m${action}: " . $file['filename'] . " (";
-    if (!empty($info['video'])) {
+    if (!empty($info['video']) && !empty($info['video']['bitrate'])) {
       print $info['video']['codec_type'] . ":" . $info['video']['codec'] . ", " . $info['video']['width'] . "x" . $info['video']['height'] . ", " . formatBytes($info['video']['bitrate'], 2, false) . "PS | ";
     }
-    if (!empty($info['audio'])) {
+    if (!empty($info['audio']) && !empty($info['audio']['bitrate'])) {
       print $info['audio']['codec_type'] . ":" . $info['audio']['codec'] . ", CH." . $info['audio']['channels'] . ", " . formatBytes($info['audio']['bitrate'], 2, false) . "PS";
     }
     if (!empty($info['subtitle'])) {
