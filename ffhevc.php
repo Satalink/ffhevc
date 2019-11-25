@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191018.0928;
+$VERSION = 20191125.0700;
 
 //Initialization and Command Line interface stuff
 $dirs = array();
@@ -91,9 +91,11 @@ function getDefaultOptions($args) {
   $options['args']['skip'] = false;
   $options['args']['override'] = false;
   $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig)
-  $options['args']['keepowner'] = false;  // if true, the original file owner will be used in the new file.
+  $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
-  $options['args']['language'] = "eng";  // If language stream is specified, keep this track
+  $options['args']['language'] = "eng";  // Default language track
+  $options['args']['maxaudiotracks'] = 1;  // Keep no more than this many audio tracks (FIFO)
+  $options['args']['filter_other_language'] = true; // filters all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
   $options['args']['delay'] = 300; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
@@ -261,13 +263,31 @@ function processItem($dir, $item, $options, $args) {
   }
 
   //Preprocess with mkvmerge (if in path)
-  if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
-    if (!empty($info['filters']['language'])) {
-      foreach ($info['filters']['language'] as $li => $lf) {
+  if ($options['args']['filter_other_language']) {
+    if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
+      if (!empty($info['filters']['language'])) {
+        foreach ($info['filters']['language'] as $li => $lf) {
+          $cmdln = "mkvmerge" .
+            " --default-language '" . $options['args']['language'] . "'" .
+            " --video-tracks '!" . $lf . "'" .
+            " --audio-tracks '!" . $lf . "'" .
+            " --subtitle-tracks '" . $options['args']['language'] . "'" .
+            " --track-tags '" . $options['args']['language'] . "'" .
+            " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
+          print "\n\n\033[01;32m${cmdln}\033[0m\n";
+          system("${cmdln} 2>&1");
+          if (file_exists($file['filename'] . ".mkvm")) {
+            $mtime = filemtime($file['basename']);
+            unlink($file['basename']);
+            rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
+            touch($file['basename'], $mtime); //retain original timestamp
+          }
+        }
+      }
+      else {
         $cmdln = "mkvmerge" .
-          " --default-language '" . $options['args']['language'] . "'" .
-          " --video-tracks '!" . $lf . "'" .
-          " --audio-tracks '!" . $lf . "'" .
+          " --language 0:" . $options['args']['language'] .
+          " --language 1:" . $options['args']['language'] .
           " --subtitle-tracks '" . $options['args']['language'] . "'" .
           " --track-tags '" . $options['args']['language'] . "'" .
           " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
@@ -275,24 +295,10 @@ function processItem($dir, $item, $options, $args) {
         system("${cmdln} 2>&1");
         if (file_exists($file['filename'] . ".mkvm")) {
           $mtime = filemtime($file['basename']);
-          rename($file['filename'] . ".mkvm", $file['basename']);
+          unlink($file['basename']);
+          rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
           touch($file['basename'], $mtime); //retain original timestamp
         }
-      }
-    }
-    else {
-      $cmdln = "mkvmerge" .
-        " --language 0:" . $options['args']['language'] .
-        " --language 1:" . $options['args']['language'] .
-        " --subtitle-tracks '" . $options['args']['language'] . "'" .
-        " --track-tags '" . $options['args']['language'] . "'" .
-        " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
-      print "\n\n\033[01;32m${cmdln}\033[0m\n";
-      system("${cmdln} 2>&1");
-      if (file_exists($file['filename'] . ".mkvm")) {
-        $mtime = filemtime($file['basename']);
-        rename($file['filename'] . ".mkvm", $file['basename']);
-        touch($file['basename'], $mtime); //retain original timestamp
       }
     }
   }
@@ -649,7 +655,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       if (!array_key_exists($vtag, $keep_vtags)) {
         $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=";
       }
-      if (preg_match('/^mkvmerge/', $vval) && !$options['args']['force']) {
+      if (preg_match('/^mkvmerge/', $vval) && !$options['args']['force'] && !$option['args']['nomkvmerge']) {
         $options['args']['skip'] = true;
       }
     }
