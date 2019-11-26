@@ -1,8 +1,10 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191125.0700;
+$VERSION = 20191126.1753;
 
 //Initialization and Command Line interface stuff
+$self = explode('/', $_SERVER['PHP_SELF']);
+$application = end($self);
 $dirs = array();
 $cleaned = array();
 $args = array();
@@ -86,7 +88,9 @@ function getDefaultOptions($args) {
   $options['audio']['bitrate'] = "640k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
   $options['audio']['sample_rate'] = 48000;
 
+  $options['args']['application'] = $args['application'];
   $options['args']['test'] = false;
+  $optiosn['args']['keys'] = false;
   $options['args']['force'] = false;
   $options['args']['skip'] = false;
   $options['args']['override'] = false;
@@ -94,9 +98,8 @@ function getDefaultOptions($args) {
   $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['language'] = "eng";  // Default language track
-  $options['args']['maxaudiotracks'] = 1;  // Keep no more than this many audio tracks (FIFO)
   $options['args']['filter_other_language'] = true; // filters all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
-  $options['args']['delay'] = 300; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
+  $options['args']['delay'] = 30; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['hwaccel'] = '';  // Decode with Hardware Accelleration: "-hwaccel [cuda dxva2 qsv d3d11va cuvid]"
@@ -127,6 +130,7 @@ function getDefaultOptions($args) {
   );
   $options['args']['cmdlnopts'] = array(
     "help",
+    "keys",
     "test",
     "force",
     "nomkvmerge",
@@ -149,55 +153,66 @@ function getDefaultOptions($args) {
   return($options);
 }
 
-$options = getDefaultOptions($args);
+$args['application'] = $application;
+$options = getDefaultOptions($args);  //Reset options
 
-//Some pre-processing...
-if (isset($argv[1]) && in_array(str_replace("--", "", $argv[1]), $options['args']['cmdlnopts'])) {
-  unset($argv[1]);
-}
-if (isset($argv[1])) {
-  $args['key'] = $argv[1];
-  if (is_file($args['key'])) {
-    $file = pathinfo($args['key']);
-    $argv[2] = "force";
-    $options = getLocationOptions($options, $args, $file['dirname']);
-    if (isset($argv[2])) {
-      if ($argv[2] == true || $argv[2] === "force") {
-        $options['args']['force'] = true;
+if (count($argv) > 1) {
+  $args['index'] = $i = 0;
+  foreach ($argv as $key => $arg) {
+    if (is_file($arg)) {
+      $file = pathinfo($arg);
+      if ($file['basename'] == $application) {
+        unset($file);
       }
     }
+    elseif (preg_match('/^--/', $arg)) {
+      $args[] = $arg;
+      if (!$args['index']) {
+        $args['index'] = $i;
+        if ($args['index'] > 1) {
+          exit("\n\033[01;31m  Invalid First Option: \"$arg $i\"\n\033[0m  Type $>\033[01;32m$application --help\n\033[0m");
+        }
+      }
+    }
+    elseif (preg_match('/^-/', $arg)) {
+      exit("\n\033[01;31m  Unknown option: \"$arg\"\n\033[0m  Type $>\033[01;32m$application --help\n\033[0m");
+    }
+    else {
+      if (array_key_exists($arg, $options['locations'])) {
+        $args['key'] = $arg;
+      }
+    }
+    $i++;
+  }
+
+//Single File Processing
+  if (!empty($file)) {
+    $options = getLocationOptions($options, $args, $file['dirname']);
     processItem($file['dirname'], $file['basename'], $options, $args);
     exit;
   }
 
-  if (
-    isset($args['key']) &&
-    array_key_exists($args["key"], $options['locations']) &&
-    isset($options['locations'][$args['key']])
-  ) {
+//Defined Key Scan and Process
+  if (isset($args['key'])) {
     $location = str_replace(" ", "\ ", $options['locations'][$args['key']]);
     $key = $args['key'];
     $dirs["$key"] = explode("|", $location)[0];
     $options = getLocationOptions($options, $args, explode("|", $location)[0]);
   }
+  elseif ($args['index'] > 0) {
+    getCommandLineOptions($options, $args);
+    getDirOptions($args);
+  }
   else {
     print "\n\033[01;31mDefined Locations:\033[0m\n";
     print_r($options['locations']);
-    exit("\033[01;31m Unknown location: \"$argv[1]\"\n Edit \$options['locations'] to add it OR create and define external_paths_file.ini within the script.\033[0m");
+    exit("\033[01;31m  Unknown location: \"$argv[1]\"\n\033[01;32m  Edit \$options['locations'] to add it OR create and define external_paths_file.ini within the script.\033[0m");
   }
 }
 else {
-  $dir = getcwd();
-  $options = getDefaultOptions($args);
-  $options = getLocationOptions($options, $args, $dir);
-  $args['key'] = null;
-  if (!empty($options['args']) && array_key_exists("key", $options['args'])) {
-    $args['key'] = $options['args']['key'];
-  }
-
-  $dirs = array($args['key'] => $dir);
+  //no arguments, use current dir to parse location settings
+  getDirOptions($args);
 }
-
 
 /* ----------MAIN------------------ */
 foreach ($dirs as $key => $dir) {
@@ -232,10 +247,10 @@ function processItem($dir, $item, $options, $args) {
   proctouch($lock);
   $extensions = getExtensions();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
-  if (!isset($file['extension'])) {
-    return;
-  }
-  if (!in_array(strtolower($file['extension']), $extensions)) {
+  if (
+    !isset($file['extension']) ||
+    !in_array(strtolower($file['extension']), $extensions)
+  ) {
     return;
   }
   $curdir = getcwd();
@@ -255,6 +270,7 @@ function processItem($dir, $item, $options, $args) {
 // check the file's timestamp (Do not process if file time is too new. Still unpacking?)
   if (filemtime($file['basename']) > time()) {
     touch($file['basename'], time()); //file time is in the future (created overseas?), set it to current time.
+    print $file['basename'] . " modified in the future (was reset to now) Try again in " . $options['args']['delay'] . " seconds.";
     return;
   }
   elseif ((filemtime($file['basename']) + $options['args']['delay']) > time() && filemtime($file['basename']) <= time() && !$options['args']['force']) {
@@ -271,6 +287,7 @@ function processItem($dir, $item, $options, $args) {
             " --default-language '" . $options['args']['language'] . "'" .
             " --video-tracks '!" . $lf . "'" .
             " --audio-tracks '!" . $lf . "'" .
+            " --no-attachments" .
             " --subtitle-tracks '" . $options['args']['language'] . "'" .
             " --track-tags '" . $options['args']['language'] . "'" .
             " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
@@ -289,6 +306,7 @@ function processItem($dir, $item, $options, $args) {
           " --language 0:" . $options['args']['language'] .
           " --language 1:" . $options['args']['language'] .
           " --subtitle-tracks '" . $options['args']['language'] . "'" .
+          " --no-attachments" .
           " --track-tags '" . $options['args']['language'] . "'" .
           " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
         print "\n\n\033[01;32m${cmdln}\033[0m\n";
@@ -655,7 +673,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       if (!array_key_exists($vtag, $keep_vtags)) {
         $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=";
       }
-      if (preg_match('/^mkvmerge/', $vval) && !$options['args']['force'] && !$option['args']['nomkvmerge']) {
+      if (!$options['args']['force'] && !$option['args']['nomkvmerge']) {
         $options['args']['skip'] = true;
       }
     }
@@ -839,6 +857,18 @@ function ffprobe($file, $options) {
   return($info);
 }
 
+function getDirOptions($args) {
+  $dir = getcwd();
+  $options = getDefaultOptions($args);
+  $options = getLocationOptions($options, $args, $dir);
+  $args['key'] = null;
+  if (!empty($options['args']) && array_key_exists("key", $options['args'])) {
+    $args['key'] = $options['args']['key'];
+  }
+  $dirs = array($args['key'] => $dir);
+  return($options);
+}
+
 function getLocationOptions($options, $args, $dir) {
   $brate = 0;
   if ($dir == ".") {
@@ -869,7 +899,7 @@ function getLocationOptions($options, $args, $dir) {
     }
   }
   $options = getAudioBitrate($options, $args);
-  $options = getCommandLineOptions($options);
+  $options = getCommandLineOptions($options, $args);
   return($options);
 }
 
@@ -880,12 +910,16 @@ function getAudioBitrate($options, $args) {
   return($options);
 }
 
-function getCommandLineOptions($options) {
+function getCommandLineOptions($options, $args) {
+
   //COMMAND LINE OPTIONS
-  $shortopts = "";
   $help = "
+  \033[01;31mcommand [options] [file|key]  // options and flags before file or defined key
+  \033[01;33me.g.   $>" . $args['application'] . " --test MediaFileName.mkv
+  \033[01;33me.g.   $>" . $args['application'] . " --keeporiginal tv
   \033[01;32mBOOLS (Default false)\033[01;34m
-  --test          :flag:        print out ffmpeg generated command line only - then exit
+  --test          :flag:        print out ffmpeg generated command line only -- and exit
+  --keys          :flag:        print out the defined keys -- and exit
   --force         :flag:        force encoding and bypass verification checks and delays
   --override      :flag:        reencode and override existing files (redo all existing regardless)
   --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
@@ -894,7 +928,7 @@ function getCommandLineOptions($options) {
 
   \033[01;32mPARMS (Default * denoted) i.e.  --quality=1.5 \033[01;34m
   --language      :pass value:  manual set at command-line Use 3 letter lang codes. (*eng, fre, spa, etc.. etc..)
-  --abitrate      :pass value:  set audio bitrate manually. Use rates compliant with configured audio codec 128k, 192k, 256k, *384k 512k
+  --abitrate      :pass value:  set audio bitrate manually. Use rates compliant with configured audio codec 128k, 192k, 256k, *384k, 512k
   --acodec        :pass value:  set audio codec manually.  (*aac, ac3, libopus, mp3, etc... | none)
   --achannels     :pass value:  set audio channels manually.  (1, 2, *6, 8) 1=mono, 2=stereo, *6=5.1, 8=7.1
   --asamplerate   :pass value:  set audio sample rate manually. (8000, 12000, 16000, 24000, 32000, 44000, *48000)
@@ -906,9 +940,17 @@ function getCommandLineOptions($options) {
   --permissions   :pass value:  set the file permission
   \033[0m";
 
-  $cmd_ln_opts = getopt($shortopts, $options['args']['cmdlnopts']);
+
+  $cmd_ln_opts = getopt(null, $options['args']['cmdlnopts'], $args['index']);
+
   if (array_key_exists("help", $cmd_ln_opts)) {
     print $help;
+    exit;
+  }
+  if (array_key_exists("keys", $cmd_ln_opts)) {
+    print "\n\033[01;32mDefined Keys in \033[01;34mhevc_paths.ini\033[0m";
+    print "\n\033[01;31mDefined Locations:\033[0m\n";
+    print_r($options['locations']);
     exit;
   }
   if (array_key_exists("force", $cmd_ln_opts)) {
