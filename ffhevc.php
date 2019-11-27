@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191126.1753;
+$VERSION = 20191127.0842;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -10,7 +10,7 @@ $cleaned = array();
 $args = array();
 
 //Only run one instance of this script!
-$proc = "ffmpeg-hevc_nvenc";
+$proc = explode("\.", $application)[0];
 $lock = proclock($proc);
 
 function getDefaultOptions($args) {
@@ -81,6 +81,10 @@ function getDefaultOptions($args) {
   $options['video']['brightness'] = 0;
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
+// HDR Conversions Safety Net
+  $options['video']['hdr']['codec'] = 'libx265';
+  $options['video']['hdr']['pix_fmt'] = '-pix_fmt yuv420p10le';
+  $options['video']['hdr']['params'] = '-x265-params "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
 
   $options['audio']['codecs'] = array("aac");   //("aac", "ac3", "libopus", "mp3") allow these codesc (if bitrate is below location limits)
   $options['audio']['codec'] = "aac";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
@@ -102,7 +106,6 @@ function getDefaultOptions($args) {
   $options['args']['delay'] = 30; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
-  $options['args']['hwaccel'] = '';  // Decode with Hardware Accelleration: "-hwaccel [cuda dxva2 qsv d3d11va cuvid]"
   $options['args']['threads'] = 0;
   $options['args']['maxmuxqueuesize'] = 4096;
   $options['args']['subtitle_codecs'] = array(
@@ -210,7 +213,7 @@ if (count($argv) > 1) {
   }
 }
 else {
-  //no arguments, use current dir to parse location settings
+//no arguments, use current dir to parse location settings
   getDirOptions($args);
 }
 
@@ -261,8 +264,8 @@ function processItem($dir, $item, $options, $args) {
   $options['info']['timestamp'] = date("Ymd.His");
 
   $info = ffprobe($file, $options);
-
   $options = ffanalyze($info, $options, $args, $dir, $file);
+
   if (empty($options)) {
     return;
   }
@@ -278,9 +281,18 @@ function processItem($dir, $item, $options, $args) {
     return;
   }
 
-  //Preprocess with mkvmerge (if in path)
-  if ($options['args']['filter_other_language']) {
-    if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
+//Preprocess with mkvmerge (if in path)
+  if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
+    if (isset($info['video']['mkvmerge'])) {
+      $mkversion = shell_exec("mkvmerge --version 2>&1");
+      list($mkvm_exec, $mkvm_ver, $mkvm_rel, $mkvm_bit) = explode(' ', $mkversion);
+      list($ikvm_exec, $ikvm_ver, $ikvm_rel, $ikvm_bit) = explode(' ', $info['video']['mkvmerge']);
+      if ($mkvm_ver === $ikvm_ver && !$options['args']['force']) {
+        $options['args']['skip'] = true;
+      }
+    }
+
+    if ($options['args']['filter_other_language'] && !$options['args']['skip']) {
       if (!empty($info['filters']['language'])) {
         foreach ($info['filters']['language'] as $li => $lf) {
           $cmdln = "mkvmerge" .
@@ -321,8 +333,12 @@ function processItem($dir, $item, $options, $args) {
     }
   }
 
+
   if (!isset($options['args']['video'])) {
     $options['args']['video'] = "-vcodec copy";
+  }
+  if ($info['video']['hdr']) {
+    $options['args']['video'] = "-vcodec " . $options['video']['hdr']['codec'] . " " . $options['video']['hdr']['params'] . " " . $options['video']['hdr']['pix_fmt'];
   }
   if ($options['args']['test']) {
     $options['args']['meta'] = '';
@@ -332,7 +348,6 @@ function processItem($dir, $item, $options, $args) {
 # CONVERT MEDIA
   $cmdln = "nice -n1 ffmpeg -v " .
     $options['args']['loglev'] . " " .
-    $options['args']['hwaccel'] . " " .
     "-i \"" . $file['basename'] . "\" " .
     "-threads " . $options['args']['threads'] . " " .
     "-f " . $options['format'] . " " .
@@ -381,7 +396,7 @@ function processItem($dir, $item, $options, $args) {
       if (file_exists($file['filename'] . $options['extension'])) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination'])) {
-          //move file to destination path defined in (external_ini_file)
+//move file to destination path defined in (external_ini_file)
           print "\033[01;32mMOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\033[0m\n";
           rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
         }
@@ -430,6 +445,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   }
 
   if (isset($info['format']['exclude']) && $info['format']['exclude'] == "1" && !$options['args']['force']) {
+    print "\033[01;31m  Excluded! \033[0m\n  Delete .xml folder or use --force option to override.";
     $options = array();
     return($options);
   }
@@ -466,6 +482,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     ) {
       $options['args']['video'] = "-vcodec copy";
     }
+
     if (!preg_match("/copy/i", $options['args']['video'])) {
       print "\033[01;32mVideo Inspection ->\033[0m" .
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
@@ -585,7 +602,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $info['audio']['codec'] . ":" . $options['audio']['codec'] . "," .
         $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "," .
         $options['args']['override'];
-
       if (is_numeric($info['audio']['bitrate'])) {
         $info['audio']['bps'] = $info['audio']['bitrate'];
         $info['audio']['bitrate'] = (int) round(($info['audio']['bitrate'] / 1000)) . "k";
@@ -597,8 +613,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $info['audio']['bps'] = (int) (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
         $info['audio']['bitrate'] = $options['audio']['bitrate'];
       }
+
       $options['audio']['bps'] = (int) (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
-      //Don't upsample source audio
+//Don't upsample source audio
       if ($info['audio']['bps'] < $options['audio']['bps']) {
         $options['audio']['bitrate'] = $info['audio']['bitrate'];
         $options['audio']['bps'] = $info['audio']['bps'];
@@ -609,7 +626,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       if ($info['audio']['sample_rate'] < $options['audio']['sample_rate'] || !isset($options['audio']['sample_rate'])) {
         $options['audio']['sample_rate'] = $info['audio']['sample_rate'];
       }
-      //Set audio args
+//Set audio args
       if (
         isset($options['audio']['codec']) &&
         isset($options['audio']['channels']) &&
@@ -673,9 +690,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       if (!array_key_exists($vtag, $keep_vtags)) {
         $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=";
       }
-      if (!$options['args']['force'] && !$option['args']['nomkvmerge']) {
-        $options['args']['skip'] = true;
-      }
     }
   }
   if (!empty($info['atags'])) {
@@ -718,8 +732,7 @@ function ffprobe($file, $options) {
     $cmdln = "ffprobe $exec_args '$basename' > './.xml/${xmlfile}'";
     $result = exec("$cmdln");
     if (!file_exists("./.xml/${xmlfile}")) {
-      print "error: Could not create ffprobe xml.  Check that ffprobe is exists, is executable, and in the system search path\n";
-      exit(1);
+      exit("error: Could not create ffprobe xml.  Check that ffprobe is exists, is executable, and in the system search path\n");
     }
   }
   else {
@@ -766,10 +779,15 @@ function ffprobe($file, $options) {
             $info['video']['ratio'] = getXmlAttribute($stream, "display_aspect_ratio");
             $info['video']['avg_frame_rate'] = getXmlAttribute($stream, "avg_frame_rate");
             $info['video']['fps'] = round(( explode("/", $info['video']['avg_frame_rate'])[0] / explode("/", $info['video']['avg_frame_rate'])[1]), 2);
+            $info['video']['hdr'] = preg_match('/bt2020/', getXmlAttribute($stream, "color_space")) ? true : false;
             foreach ($stream->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $vtags[$tag_key] = $tag_val;
+              //print "\n" . $tag_key . " : " . $tag_val . "\n";
+              if (preg_match('/mkvmerge/', $tag_val)) {
+                $info['video']['mkvmerge'] = $tag_val;
+              }
               if (preg_match('/^bps/i', $tag_key) && !isset($info['video']['bitrate'])) {
                 $info['video']['bitrate'] = (int) $tag_val;
               }
@@ -912,7 +930,7 @@ function getAudioBitrate($options, $args) {
 
 function getCommandLineOptions($options, $args) {
 
-  //COMMAND LINE OPTIONS
+//COMMAND LINE OPTIONS
   $help = "
   \033[01;31mcommand [options] [file|key]  // options and flags before file or defined key
   \033[01;33me.g.   $>" . $args['application'] . " --test MediaFileName.mkv
@@ -925,8 +943,9 @@ function getCommandLineOptions($options, $args) {
   --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
   --keeporiginal  :flag:        keep the original file and save as filename.ext.orig
   --keepowner     :flag:        keep the original file owner for the newly created file
+  --filterotherlanguage  :flag:  strip foriegn languages NOT matching \$options['args']['language'] OR --language
 
-  \033[01;32mPARMS (Default * denoted) i.e.  --quality=1.5 \033[01;34m
+  \033[01;32mPARMS (Default * denoted) i.e.  --language=eng \033[01;34m
   --language      :pass value:  manual set at command-line Use 3 letter lang codes. (*eng, fre, spa, etc.. etc..)
   --abitrate      :pass value:  set audio bitrate manually. Use rates compliant with configured audio codec 128k, 192k, 256k, *384k, 512k
   --acodec        :pass value:  set audio codec manually.  (*aac, ac3, libopus, mp3, etc... | none)
@@ -970,6 +989,9 @@ function getCommandLineOptions($options, $args) {
   }
   if (array_key_exists("test", $cmd_ln_opts)) {
     $options['args']['test'] = true;
+  }
+  if (array_key_exists("filterotherlanguages", $cmd_ln_opts)) {
+    $options['args']['filter_other_languages'] = true;
   }
   if (array_key_exists("abitrate", $cmd_ln_opts)) {
     $options['audio']['bitrate'] = $cmd_ln_opts['abitrate'];
@@ -1080,6 +1102,10 @@ function proclock($procname) {
   $lock = fopen("$lockfile", 'wr+');
   if (!flock($lock, LOCK_EX | LOCK_NB)) {
     $lockdate = file_get_contents($lockfile);
+    if (empty($lockdate)) {
+      $file = pathinfo($lockfile);
+      $lockdate = filemtime($file['basename']);
+    }
     if (($lockdate + 28800) > time()) {  // if process has been running for 8 hours let it finish and die.
       fclose($lock);
       unlink($lockfile);
