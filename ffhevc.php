@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191127.2006;
+$VERSION = 20191127.2252;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -209,8 +209,12 @@ if (count($argv) > 1) {
     $options = getLocationOptions($options, $args, explode("|", $location)[0]);
   }
   elseif ($args['index'] > 0) {
-    getCommandLineOptions($options, $args);
-    getDirOptions($args);
+    $dir = getcwd();
+    $options = getLocationOptions($options, $args, $dir);
+    if (!empty($options['args']) && array_key_exists("key", $options['args'])) {
+      $args['key'] = $options['args']['key'];
+    }
+    $dirs = array($args['key'] => $dir);
   }
   else {
     print "\n\033[01;31mDefined Locations:\033[0m\n";
@@ -220,7 +224,14 @@ if (count($argv) > 1) {
 }
 else {
 //no arguments, use current dir to parse location settings
-  getDirOptions($args);
+  $dir = getcwd();
+//  $options = getDefaultOptions($args);
+  $options = getLocationOptions($options, $args, $dir);
+  $args['key'] = null;
+  if (!empty($options['args']) && array_key_exists("key", $options['args'])) {
+    $args['key'] = $options['args']['key'];
+  }
+  $dirs = array($args['key'] => $dir);
 }
 
 /* ----------MAIN------------------ */
@@ -885,18 +896,6 @@ function ffprobe($file, $options) {
     print "\033[01;34m)\033[0m\n";
   }
   return($info);
-}
-
-function getDirOptions($args) {
-  $dir = getcwd();
-  $options = getDefaultOptions($args);
-  $options = getLocationOptions($options, $args, $dir);
-  $args['key'] = null;
-  if (!empty($options['args']) && array_key_exists("key", $options['args'])) {
-    $args['key'] = $options['args']['key'];
-  }
-  $dirs = array($args['key'] => $dir);
-  return($options);
 }
 
 function getLocationOptions($options, $args, $dir) {
