@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191128.1056;
+$VERSION = 20191128.1057;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -563,6 +563,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $scale_option = null;
       }
 
+      $fps_options = null;
       if ($info['video']['fps'] > $options['video']['fps']) {
         $fps_option = " -r " . $options['video']['fps'];
       }
