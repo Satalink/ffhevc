@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191128.0522;
+$VERSION = 20191128.0728;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -82,9 +82,9 @@ function getDefaultOptions($args) {
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
 // HDR Conversions Safety Net
-  $options['video']['hdr']['codec'] = 'libx265';
-  $options['video']['hdr']['pix_fmt'] = '-pix_fmt yuv420p10le';
-  $options['video']['hdr']['params'] = '-x265-params "colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
+  $options['video']['hdr']['codec'] = "libx265";
+  $options['video']['hdr']['pix_fmt'] = "yuv420p10le";
+  $options['video']['hdr']['params'] = '"colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
 
   $options['audio']['codecs'] = array("aac");   //("aac", "ac3", "libopus", "mp3") allow these codesc (if bitrate is below location limits)
   $options['audio']['codec'] = "aac";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
@@ -361,7 +361,17 @@ function processItem($dir, $item, $options, $args) {
     $options['args']['video'] = "-vcodec copy";
   }
   if ($info['video']['hdr']) {
-    $options['args']['video'] = "-vcodec " . $options['video']['hdr']['codec'] . " " . $options['video']['hdr']['params'] . " " . $options['video']['hdr']['pix_fmt'];
+    $options['args']['video'] = "-vcodec " . $options['video']['hdr']['codec'] .
+      " -x265-params " . $options['video']['hdr']['params'] .
+      " -pix_fmt " . $options['video']['hdr']['pix_fmt'] .
+      " -vb " . $options['video']['vps'] .
+      " -qmin " . $options['video']['vmin'] .
+      " -qmax " . $options['video']['vmax'] .
+      " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] .
+      $fps_option .
+      " -vsync 1 ";
+
+    $options['args']['exclude'] = true;
   }
   if ($options['args']['test']) {
     $options['args']['meta'] = '';
@@ -401,35 +411,35 @@ function processItem($dir, $item, $options, $args) {
   $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
   set_permissions($file, $options);
   restore_owner($file, $options);
+  $inforig = $info;
   $info = ffprobe($file, $options);
 
 
 #Validate
-  //TODO - break validation up into individual checks
-  /*
-   *   Check probe_score == 100
-   *   Check filesize < origininal filesize
-   *   Check has video stream
-   *   Check has audio stream
-   *
-   */
   if (!$options['args']['keeporiginal']) {
-    $exclude = false;
     $mtime = filemtime($fileorig['filename'] . "." . $fileorig['extension'] . ".orig");
-    if (
-      (
-      ($info['format']['probe_score'] == 100) &&
-      isset($info['video']) &&
-      isset($info['audio']) &&
-      (((int) $info['format']['size']) <= (filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")))
-      ) || ($options['args']['force'])
-    ) {
+
+    $reasons = array();
+    if ($info['format']['probe_score'] < 100) {
+      $reasons[] = "probe_score = " . $info['format']['probe_score'];
+    }
+    if (isset($inforig['video']) && !isset($info['video'])) {
+      $reasons[] = "video stream is missing";
+    }
+    if (isset($inforig['audio']) && !isset($info['audio'])) {
+      $reasons[] = "audio stream is missing";
+    }
+    if ((((int) $info['format']['size']) <= (filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")))) {
+      $reasons[] = "original filesize is smaller by (" . formatBytes(($info['format']['size'] - filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")), 0, false);
+    }
+
+    if (empty($reasons) || ($options['args']['force'])) {
       echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . formatBytes(filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig"), 2, true) . " [orig] - " . formatBytes($info['format']['size'], 2, true) . " [new] = \033[01;32m" . formatBytes((filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig") - $info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
       unlink($fileorig['filename'] . "." . $fileorig['extension'] . ".orig");
       if (file_exists($file['filename'] . $options['extension'])) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination'])) {
-//move file to destination path defined in (external_ini_file)
+          //move file to destination path defined in (external_ini_file)
           print "\033[01;32mMOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\033[0m\n";
           rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
         }
@@ -437,13 +447,11 @@ function processItem($dir, $item, $options, $args) {
     }
     else {
       print "Rollback: " . $file['basename'] . " : ";
-      if ($info['format']['probe_score'] != 100) {
-        print "reason =  probe_score " . $info['format']['probe_score'] . "\n";
+      print "  reason(s):";
+      foreach ($reasons as $reason) {
+        print "$reason\n";
       }
-      if ($info['format']['size'] > filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")) {
-        print "reason = original filesize is smaller by (" . formatBytes(($info['format']['size'] - filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")), 0, false) . ")\n";
-      }
-      $exclude = true;
+      //conversion failed : Let's cleanup and exclude
       if (file_exists($file['filename'] . ".hevc")) {
         unlink($file['filename'] . ".hevc");
       }
@@ -458,6 +466,13 @@ function processItem($dir, $item, $options, $args) {
       }
     }
   }
+
+  //
+  if ($options['args']['exclude']) {
+    $info = ffprobe($file, $options);
+    setXmlAttributeExclude($file);
+  }
+
   if ($options['args']['cooldown'] > 0) {
     print "\033[01;31mCooldown period: " . $options['args']['cooldown'] . " seconds. \033[0m\n";
     sleep($options['args']['cooldown']);
