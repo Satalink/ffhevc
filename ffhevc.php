@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191127.0842;
+$VERSION = 20191127.2006;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -72,7 +72,7 @@ function getDefaultOptions($args) {
    *
    *    NOTE: External Paths Config OVERRIDES THESE VALUES
    */
-  $options['video']['quality_factor'] = 1.26;  //Range 1.00 to 3.00 (QualityBased: vmin-vmax overrides VBR Quality. Bitrate will not drop below VBR regardless of vmin-vmax settings)
+  $options['video']['quality_factor'] = 1.29;  //Range 1.00 to 3.00 (QualityBased: vmin-vmax overrides VBR Quality. Bitrate will not drop below VBR regardless of vmin-vmax settings)
   $options['video']['vmin'] = "1";
   $options['video']['vmax'] = "35";  // The lower the value, the higher the quality/bitrate
   $options['video']['fps'] = 29.97;
@@ -98,11 +98,12 @@ function getDefaultOptions($args) {
   $options['args']['force'] = false;
   $options['args']['skip'] = false;
   $options['args']['override'] = false;
+  $options['args']['exclude'] = false;  // if true, the xml file will be flagged exclude for the processing the media.
   $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig)
   $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['language'] = "eng";  // Default language track
-  $options['args']['filter_other_language'] = true; // filters all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
+  $options['args']['filter_foreign'] = true; // filters all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
   $options['args']['delay'] = 30; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
@@ -138,10 +139,12 @@ function getDefaultOptions($args) {
     "force",
     "nomkvmerge",
     "override",
+    "exclude",
     "keeporiginal",
     "keepowner",
     "permissions",
     "language::",
+    "filterforeign",
     "abitrate::",
     "acodec::",
     "achannels::",
@@ -166,6 +169,9 @@ if (count($argv) > 1) {
       $file = pathinfo($arg);
       if ($file['basename'] == $application) {
         unset($file);
+      }
+      else {
+        $options['args']['force'] = true;  // use FORCE in Single File Processing mode
       }
     }
     elseif (preg_match('/^--/', $arg)) {
@@ -256,6 +262,12 @@ function processItem($dir, $item, $options, $args) {
   ) {
     return;
   }
+  if ($options['args']['exclude']) {
+    $info = ffprobe($file, $options);
+    setXmlAttributeExclude($file);
+    return;
+  }
+
   $curdir = getcwd();
   chdir($file['dirname']);
 
@@ -292,7 +304,7 @@ function processItem($dir, $item, $options, $args) {
       }
     }
 
-    if ($options['args']['filter_other_language'] && !$options['args']['skip']) {
+    if ($options['args']['filter_foreign'] && !$options['args']['skip']) {
       if (!empty($info['filters']['language'])) {
         foreach ($info['filters']['language'] as $li => $lf) {
           $cmdln = "mkvmerge" .
@@ -940,10 +952,11 @@ function getCommandLineOptions($options, $args) {
   --keys          :flag:        print out the defined keys -- and exit
   --force         :flag:        force encoding and bypass verification checks and delays
   --override      :flag:        reencode and override existing files (redo all existing regardless)
+  --exclude       :flag:        exclude from being processed (ignore this video), stored in .xml
   --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
   --keeporiginal  :flag:        keep the original file and save as filename.ext.orig
   --keepowner     :flag:        keep the original file owner for the newly created file
-  --filterotherlanguage  :flag:  strip foriegn languages NOT matching \$options['args']['language'] OR --language
+  --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language
 
   \033[01;32mPARMS (Default * denoted) i.e.  --language=eng \033[01;34m
   --language      :pass value:  manual set at command-line Use 3 letter lang codes. (*eng, fre, spa, etc.. etc..)
@@ -955,7 +968,7 @@ function getCommandLineOptions($options, $args) {
   --vmax          :pass value:  set variable quality max (1-*33)
   --fps           :pass value:  set frames per second (23.97, 24, *29.97, 30, 60, 120, etc)
   --scale         :pass value:  set the the downsize resolution height. Aspect auto retained. (480, 720, 1080, *2160, 4320, etc) WILL NOT UPSCALE!
-  --quality       :pass value:  set the quality factor (0.5 => low, 1.0 => normal, 2.0 => high) *default 1.12
+  --quality       :pass value:  set the quality factor (0.5 => low, 1.0 => normal, 2.0 => high) *default 1.29
   --permissions   :pass value:  set the file permission
   \033[0m";
 
@@ -981,6 +994,9 @@ function getCommandLineOptions($options, $args) {
   if (array_key_exists("override", $cmd_ln_opts)) {
     $options['args']['override'] = true;
   }
+  if (array_key_exists("exclude", $cmd_ln_opts)) {
+    $options['args']['exclude'] = true;
+  }
   if (array_key_exists("keeporiginal", $cmd_ln_opts)) {
     $options['args']['keeporiginal'] = true;
   }
@@ -990,8 +1006,8 @@ function getCommandLineOptions($options, $args) {
   if (array_key_exists("test", $cmd_ln_opts)) {
     $options['args']['test'] = true;
   }
-  if (array_key_exists("filterotherlanguages", $cmd_ln_opts)) {
-    $options['args']['filter_other_languages'] = true;
+  if (array_key_exists("filterforeign", $cmd_ln_opts)) {
+    $options['args']['filter_foreign'] = true;
   }
   if (array_key_exists("abitrate", $cmd_ln_opts)) {
     $options['audio']['bitrate'] = $cmd_ln_opts['abitrate'];
