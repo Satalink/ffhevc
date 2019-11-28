@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191127.2252;
+$VERSION = 20191128.0522;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -405,12 +405,22 @@ function processItem($dir, $item, $options, $args) {
 
 
 #Validate
+  //TODO - break validation up into individual checks
+  /*
+   *   Check probe_score == 100
+   *   Check filesize < origininal filesize
+   *   Check has video stream
+   *   Check has audio stream
+   *
+   */
   if (!$options['args']['keeporiginal']) {
     $exclude = false;
     $mtime = filemtime($fileorig['filename'] . "." . $fileorig['extension'] . ".orig");
     if (
       (
       ($info['format']['probe_score'] == 100) &&
+      isset($info['video']) &&
+      isset($info['audio']) &&
       (((int) $info['format']['size']) <= (filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")))
       ) || ($options['args']['force'])
     ) {
@@ -468,7 +478,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   }
 
   if (isset($info['format']['exclude']) && $info['format']['exclude'] == "1" && !$options['args']['force']) {
-    print "\033[01;31m  Excluded! \033[0m\n  Delete .xml folder or use --force option to override.";
+    print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --force option to override.\n";
     $options = array();
     return($options);
   }
