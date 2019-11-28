@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191128.0728;
+$VERSION = 20191128.1047;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -94,6 +94,7 @@ function getDefaultOptions($args) {
 
   $options['args']['application'] = $args['application'];
   $options['args']['test'] = false;
+  $options['args']['yes'] = false;
   $optiosn['args']['keys'] = false;
   $options['args']['force'] = false;
   $options['args']['skip'] = false;
@@ -134,6 +135,7 @@ function getDefaultOptions($args) {
   );
   $options['args']['cmdlnopts'] = array(
     "help",
+    "yes",
     "keys",
     "test",
     "force",
@@ -241,7 +243,6 @@ foreach ($dirs as $key => $dir) {
 
 procunlock($lock, $proc);
 
-
 /* ## ## ## STATIC FUNCTIONS ## ## ## */
 
 function processRecursive($dir, $options, $args) {
@@ -275,6 +276,9 @@ function processItem($dir, $item, $options, $args) {
   }
   if ($options['args']['exclude']) {
     $info = ffprobe($file, $options);
+    if (empty($info)) {
+      return;
+    }
     setXmlAttributeExclude($file);
     return;
   }
@@ -287,6 +291,9 @@ function processItem($dir, $item, $options, $args) {
   $options['info']['timestamp'] = date("Ymd.His");
 
   $info = ffprobe($file, $options);
+  if (empty($info)) {
+    return;
+  }
   $options = ffanalyze($info, $options, $args, $dir, $file);
 
   if (empty($options)) {
@@ -413,7 +420,9 @@ function processItem($dir, $item, $options, $args) {
   restore_owner($file, $options);
   $inforig = $info;
   $info = ffprobe($file, $options);
-
+  if (empty($info)) {
+    return;
+  }
 
 #Validate
   if (!$options['args']['keeporiginal']) {
@@ -429,7 +438,7 @@ function processItem($dir, $item, $options, $args) {
     if (isset($inforig['audio']) && !isset($info['audio'])) {
       $reasons[] = "audio stream is missing";
     }
-    if ((((int) $info['format']['size']) <= (filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")))) {
+    if (((int) $inforig['format']['size']) < ((int) $info['format']['size'])) {
       $reasons[] = "original filesize is smaller by (" . formatBytes(($info['format']['size'] - filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")), 0, false);
     }
 
@@ -461,15 +470,16 @@ function processItem($dir, $item, $options, $args) {
       rename($file['filename'] . "." . $file['extension'] . ".orig", $file['basename']);
       if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
         unlink("./.xml/" . $file['filename'] . ".xml");
-        $info = ffprobe($file, $options);
-        setXmlAttributeExclude($file);
+        $options['args']['exclude'] = true;
       }
     }
   }
 
-  //
   if ($options['args']['exclude']) {
     $info = ffprobe($file, $options);
+    if (empty($info)) {
+      return;
+    }
     setXmlAttributeExclude($file);
   }
 
@@ -477,6 +487,7 @@ function processItem($dir, $item, $options, $args) {
     print "\033[01;31mCooldown period: " . $options['args']['cooldown'] . " seconds. \033[0m\n";
     sleep($options['args']['cooldown']);
   }
+
   chdir($curdir);
   return;
 }
@@ -905,8 +916,8 @@ function ffprobe($file, $options) {
 
   if (
     $action != "INFO" &&
-    isset($info['video']) &&
-    isset($info['audio'])
+    !empty($info['video']) &&
+    !empty($info['audio'])
   ) {
     print "\033[01;34m${action}: " . $file['filename'] . " (";
     if (!empty($info['video']) && !empty($info['video']['bitrate'])) {
@@ -919,6 +930,28 @@ function ffprobe($file, $options) {
       print "SUB: " . $info['subtitle']['codec_type'] . ":" . $info['subtitle']['codec'];
     }
     print "\033[01;34m)\033[0m\n";
+  }
+  elseif (
+    empty($info['video']) ||
+    empty($info['audio'])
+  ) {
+    $del = null;
+    $missing = null;
+    if (!$options['args']['yes']) {
+      if (empty($info['video'])) {
+        $missing = "video";
+      }
+      if (empty($info['audio'])) {
+        $missing = 'audio';
+      }
+      print "\033[01;34m " . $file['filename'] . " $missing track is missing\033[0m\n";
+      print "Delete " . $file['basename'] . "?  [Y/n] >";
+      $del = rtrim(fgets(STDIN));
+    }
+    if (!preg_match('/n/i', $del)) {
+      unlink($file['basename']);
+      $info = array();
+    }
   }
   return($info);
 }
@@ -973,6 +1006,7 @@ function getCommandLineOptions($options, $args) {
   \033[01;33me.g.   $>" . $args['application'] . " --keeporiginal tv
   \033[01;32mBOOLS (Default false)\033[01;34m
   --test          :flag:        print out ffmpeg generated command line only -- and exit
+  --yes           :flag:        answer yes to any prompts
   --keys          :flag:        print out the defined keys -- and exit
   --force         :flag:        force encoding and bypass verification checks and delays
   --override      :flag:        reencode and override existing files (redo all existing regardless)
@@ -1008,6 +1042,9 @@ function getCommandLineOptions($options, $args) {
     print "\n\033[01;31mDefined Locations:\033[0m\n";
     print_r($options['locations']);
     exit;
+  }
+  if (array_key_exists("yes", $cmd_ln_opts)) {
+    $options['args']['yes'] = true;
   }
   if (array_key_exists("force", $cmd_ln_opts)) {
     $options['args']['force'] = true;
