@@ -368,6 +368,10 @@ function processItem($dir, $item, $options, $args) {
   if (!isset($options['args']['video'])) {
     $options['args']['video'] = "-vcodec copy";
   }
+  if (preg_match('/p10/', $options['video']['pix_fmt'])) {
+    $options['profile'] = "main10";
+  }
+
   if ($info['video']['hdr']) {
     $options['args']['video'] = "-vcodec " . $options['video']['hdr']['codec'] .
       " -x265-params " . $options['video']['hdr']['params'] .
