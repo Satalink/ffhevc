@@ -57,11 +57,11 @@ function getDefaultOptions($args) {
 
 //Default configuration for video/audio encoding
 #Presets for Plex Direct Play  (use nvenc if you have GTX-1060+ or GTX-960+ Card)
-  $opt['H264'] = array("matroska", ".mkv", "libx264", "yuv420p", "avc");
-  $opt['H264-nvenc'] = array("matroska", ".mkv", "h264_nvenc", "yuv420p", "avc");
-  $opt['H265'] = array("matroska", ".mkv", "libx265", "yuv420p", "hevc");
-  $opt['hevc-nvenc-mkv'] = array("matroska", ".mkv", "hevc_nvenc", "yuv420p", "hevc");
-  $opt['hevc-nvenc-mp4'] = array("mp4", ".mp4", "hevc_nvenc", "yuv420p", "hevc");
+  $opt['H264'] = array("main", "matroska", ".mkv", "libx264", "yuv420p", "avc");
+  $opt['H264-nvenc'] = array("main", "matroska", ".mkv", "h264_nvenc", "yuv420p10le", "avc");
+  $opt['H265'] = array("main10", "matroska", ".mkv", "libx265", "yuv420p", "hevc");
+  $opt['hevc-nvenc-mkv'] = array("main", "matroska", ".mkv", "hevc_nvenc", "yuv420p", "hevc");
+  $opt['hevc-nvenc-mp4'] = array("main10", "mp4", ".mp4", "hevc_nvenc", "yuv420p10le", "hevc");
 
 //---EASY CONFIG SELECT---//
   $my_config = $opt['hevc-nvenc-mkv'];
@@ -151,6 +151,7 @@ function getDefaultOptions($args) {
     "acodec::",
     "achannels::",
     "asamplerate::",
+    "pix_fmt::",
     "vbr::",
     "vmin::",
     "vmax::",
@@ -384,12 +385,12 @@ function processItem($dir, $item, $options, $args) {
     $options['args']['meta'] = '';
   }
 
-
 # CONVERT MEDIA
   $cmdln = "nice -n1 ffmpeg -v " .
     $options['args']['loglev'] . " " .
     "-i \"" . $file['basename'] . "\" " .
     "-threads " . $options['args']['threads'] . " " .
+    "-profile " . $options['profile'] . " " .
     "-f " . $options['format'] . " " .
     $options['args']['video'] . " " .
     $options['args']['audio'] . " " .
@@ -532,6 +533,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       $info['video']['bitrate'] = 0;
     }
 
+    // Analizing for encoding or copy
     if (
       preg_match(strtolower("/$codec_name/"), $info['video']['codec']) &&
       ($info['video']['pix_fmt'] == $options['video']['pix_fmt']) &&
@@ -577,6 +579,11 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -qmin " . $options['video']['vmin'] .
         " -qmax " . $options['video']['vmax'] .
         " -pix_fmt " . $options['video']['pix_fmt'] .
+//        " -crf 1" .
+//        " -rc vbr_hq " .
+//        " -rc-lookahead " . round($options['video']['fps'] * 2, 0) .
+//        " -maxrate 32M" .
+//        " -bufsize 64M" .
         " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] .
         $fps_option .
         " -vsync 1 ";
@@ -611,7 +618,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -metadata:s:v:0 bps=" . $options['video']['bps'] .
         " -metadata:s:v:0 title= ";
     }
-    $options['args']['map'] .= " -map 0:v? ";
+    $options['args']['map'] .= "-map 0:v? ";
   }
 
 //Audio
@@ -659,8 +666,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     else {
       print "\033[01;32mAudio Inspection ->\033[0m" .
         $info['audio']['codec'] . ":" . $options['audio']['codec'] . "," .
-        $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "," .
-        $options['args']['override'];
+        $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "\n";
       if (is_numeric($info['audio']['bitrate'])) {
         $info['audio']['bps'] = $info['audio']['bitrate'];
         $info['audio']['bitrate'] = (int) round(($info['audio']['bitrate'] / 1000)) . "k";
@@ -712,12 +718,12 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -metadata:s:a:0 bps=" . $options['audio']['bps'] .
         " -metadata:s:a:0 title= ";
     }
-    $options['args']['map'] .= " -map 0:a? ";
+    $options['args']['map'] .= "-map 0:a? ";
   }
 
 //Subtexts
   $options['args']['subs'] = "-scodec copy";
-  $options['args']['map'] .= " -map 0:s? ";
+  $options['args']['map'] .= "-map 0:s? ";
 
 //Clear Old Tags
   $keep_vtags = array(
@@ -1022,6 +1028,7 @@ function getCommandLineOptions($options, $args) {
   --acodec        :pass value:  set audio codec manually.  (*aac, ac3, libopus, mp3, etc... | none)
   --achannels     :pass value:  set audio channels manually.  (1, 2, *6, 8) 1=mono, 2=stereo, *6=5.1, 8=7.1
   --asamplerate   :pass value:  set audio sample rate manually. (8000, 12000, 16000, 24000, 32000, 44000, *48000)
+  --pix_fmt       :pass value:  set video codec pix_fmt (*yuv420p, yuv420p10, yuv420p10le, yuv422p, yuv444p)
   --vmin          :pass value:  set variable quality min (*1-33)
   --vmax          :pass value:  set variable quality max (1-*33)
   --fps           :pass value:  set frames per second (23.97, 24, *29.97, 30, 60, 120, etc)
@@ -1097,6 +1104,9 @@ function getCommandLineOptions($options, $args) {
   if (array_key_exists("scale", $cmd_ln_opts)) {
     $options['video']['scale'] = $cmd_ln_opts['scale'];
   }
+  if (array_key_exists("pix_fmt", $cmd_ln_opts)) {
+    $options['video']['pix_fmt'] = $cmd_ln_opts['pix_fmt'];
+  }
   return($options);
 }
 
@@ -1160,11 +1170,12 @@ function cleanXMLDir($dir, $options) {
 }
 
 function setOption($option) {
-  $options['format'] = $option[0];
-  $options['extension'] = $option[1];
-  $options['video']['codec'] = $option[2];
-  $options['video']['pix_fmt'] = $option[3];
-  $options['video']['codec_name'] = $option[4];
+  $options['profile'] = $option[0];
+  $options['format'] = $option[1];
+  $options['extension'] = $option[2];
+  $options['video']['codec'] = $option[3];
+  $options['video']['pix_fmt'] = $option[4];
+  $options['video']['codec_name'] = $option[5];
   return($options);
 }
 
