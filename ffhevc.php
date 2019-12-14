@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191128.1058;
+$VERSION = 20191214.1032;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -58,10 +58,10 @@ function getDefaultOptions($args) {
 //Default configuration for video/audio encoding
 #Presets for Plex Direct Play  (use nvenc if you have GTX-1060+ or GTX-960+ Card)
   $opt['H264'] = array("main", "matroska", ".mkv", "libx264", "yuv420p", "avc");
-  $opt['H264-nvenc'] = array("main", "matroska", ".mkv", "h264_nvenc", "yuv420p10le", "avc");
-  $opt['H265'] = array("main10", "matroska", ".mkv", "libx265", "yuv420p", "hevc");
-  $opt['hevc-nvenc-mkv'] = array("main", "matroska", ".mkv", "hevc_nvenc", "yuv420p", "hevc");
-  $opt['hevc-nvenc-mp4'] = array("main10", "mp4", ".mp4", "hevc_nvenc", "yuv420p10le", "hevc");
+  $opt['H264-nvenc'] = array("main", "matroska", ".mkv", "h264_nvenc", "yuv420p", "avc");
+  $opt['H265'] = array("main10", "matroska", ".mkv", "libx265", "yuv420p10le", "hevc");
+  $opt['hevc-nvenc-mkv'] = array("main10", "matroska", ".mkv", "hevc_nvenc", "p010le", "hevc");
+  $opt['hevc-nvenc-mp4'] = array("main10", "mp4", ".mp4", "hevc_nvenc", "p010le", "hevc");
 
 //---EASY CONFIG SELECT---//
   $my_config = $opt['hevc-nvenc-mkv'];
@@ -90,6 +90,7 @@ function getDefaultOptions($args) {
   $options['audio']['codec'] = "aac";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
   $options['audio']['channels'] = 8;
   $options['audio']['bitrate'] = "640k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
+  $options['audio']['quality_factor'] = 1.01; // give bit-rate some tollerance (384114 would pass okay for 384000)
   $options['audio']['sample_rate'] = 48000;
 
   $options['args']['application'] = $args['application'];
@@ -110,6 +111,11 @@ function getDefaultOptions($args) {
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['threads'] = 0;
   $options['args']['maxmuxqueuesize'] = 4096;
+  $options['args']['pix_fmts'] = array(//acceptable pix_fmts
+    "yuv420p",
+    "yuv420p10le",
+    "p010le"
+  );
   $options['args']['subtitle_codecs'] = array(
     "ass" => "ass",
     "dks" => "dks",
@@ -269,6 +275,7 @@ function processItem($dir, $item, $options, $args) {
   proctouch($lock);
   $extensions = getExtensions();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
+  $file = titlecase_filename($file);
   if (
     !isset($file['extension']) ||
     !in_array(strtolower($file['extension']), $extensions)
@@ -340,7 +347,7 @@ function processItem($dir, $item, $options, $args) {
             $mtime = filemtime($file['basename']);
             unlink($file['basename']);
             rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
-            touch($file['basename'], $mtime); //retain original timestamp
+            touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
           }
         }
       }
@@ -358,7 +365,7 @@ function processItem($dir, $item, $options, $args) {
           $mtime = filemtime($file['basename']);
           unlink($file['basename']);
           rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
-          touch($file['basename'], $mtime); //retain original timestamp
+          touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
         }
       }
     }
@@ -540,9 +547,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     // Analizing for encoding or copy
     if (
       preg_match(strtolower("/$codec_name/"), $info['video']['codec']) &&
-      ($info['video']['pix_fmt'] == $options['video']['pix_fmt']) &&
+      (in_array($info['video']['pix_fmt'], $options['args']['pix_fmts'])) &&
       ($info['video']['height'] <= $options['video']['scale']) &&
-      ($info['video']['bitrate'] <= $options['video']['bps']) &&
+      ($info['video']['bitrate'] <= ($options['video']['bps'] * $options['video']['quality_factor'])) &&
       (!$options['args']['override'])
     ) {
       $options['args']['video'] = "-vcodec copy";
@@ -551,7 +558,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     if (!preg_match("/copy/i", $options['args']['video'])) {
       print "\033[01;32mVideo Inspection ->\033[0m" .
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
-        $info['video']['pix_fmt'] . "=" . $options['video']['pix_fmt'] . "," .
+        $info['video']['pix_fmt'] . "~=" . $options['video']['pix_fmt'] . "," .
         $info['video']['height'] . "<=" . $options['video']['scale'] . "," .
         $info['video']['bitrate'] . "<=" . ( $options['video']['bps'] * $options['video']['quality_factor']) . "," . // give some tollerance
         $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
@@ -583,11 +590,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -qmin " . $options['video']['vmin'] .
         " -qmax " . $options['video']['vmax'] .
         " -pix_fmt " . $options['video']['pix_fmt'] .
-//        " -crf 1" .
-//        " -rc vbr_hq " .
-//        " -rc-lookahead " . round($options['video']['fps'] * 2, 0) .
-//        " -maxrate 32M" .
-//        " -bufsize 64M" .
         " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] .
         $fps_option .
         " -vsync 1 ";
@@ -632,7 +634,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   if (!empty($info['audio'])) {
     if (
       in_array($info['audio']['codec'], $options['audio']['codecs']) &&
-      (int) $info['audio']['bitrate'] <= ((filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000)) &&
+      (int) ((filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) * $options['audio']['quality_factor']) &&
       $info['audio']['channels'] <= $options['audio']['channels'] &&
       !$options['args']['override']
     ) {
@@ -934,7 +936,7 @@ function ffprobe($file, $options) {
       print $info['video']['codec_type'] . ":" . $info['video']['codec'] . ", " . $info['video']['width'] . "x" . $info['video']['height'] . ", " . formatBytes($info['video']['bitrate'], 2, false) . "PS | ";
     }
     if (!empty($info['audio']) && !empty($info['audio']['bitrate'])) {
-      print $info['audio']['codec_type'] . ":" . $info['audio']['codec'] . ", CH." . $info['audio']['channels'] . ", " . formatBytes($info['audio']['bitrate'], 2, false) . "PS";
+      print $info['audio']['codec_type'] . ":" . $info['audio']['codec'] . ", CH." . $info['audio']['channels'] . ", " . formatBytes($info['audio']['bitrate'], 0, false) . "PS";
     }
     if (!empty($info['subtitle'])) {
       print "SUB: " . $info['subtitle']['codec_type'] . ":" . $info['subtitle']['codec'];
@@ -947,7 +949,7 @@ function ffprobe($file, $options) {
   ) {
     $del = null;
     $missing = null;
-    if (!$options['args']['yes']) {
+    if (!$options['args']['yes'] && $file['extension'] == $options['extension']) {
       if (empty($info['video'])) {
         $missing = "video";
       }
@@ -1215,8 +1217,32 @@ function proclock($procname) {
 
 function strip_illegal_chars($file) {
   if (preg_match('/\'/', $file['filename'])) {
-    rename($file['dirname'] . "/" . $file['basename'], $file['dirname'] . "/" . str_replace("'", "", $file['filename']) . "." . $file['extension']);
-    $file = pathinfo($file['dirname'] . "/" . str_replace("'", "", $file['filename']) . "." . $file['extension']);
+    rename($file['dirname'] . "/" . $file['basename'], $file['dirname'] . "/" . str_replace("'", "", ($file['filename'])) . "." . $file['extension']);
+    $file = pathinfo($file['dirname'] . "/" . str_replace("'", "", ucwords($file['filename'])) . "." . $file['extension']);
+  }
+  return($file);
+}
+
+function titlecase_filename($file) {
+  $excluded_words = array('a', 'an', 'and', 'at', 'but', 'by', 'else', 'etc', 'for', 'from', 'if', 'in', 'into', 'is', 'of', 'or', 'nor', 'on', 'to', 'that', 'the', 'then', 'when', 'with');
+  $allcap_words = array("us");
+  $words = explode(' ', strtolower($file['filename']));
+  $title = array();
+  $firstword = true;
+  foreach ($words as $word) {
+    if ((!in_array($word, $excluded_words) && !in_array($word, $allcap_words) && !preg_match("/[s]\d+[e]\d+/", $word)) || $firstword) {
+      $title[] = ucwords($word);
+      $firstword = false;
+    }
+    elseif (in_array($word, $allcap_words) || preg_match("/[s]\d+[e]\d+/", $word)) {
+      $title[] = strtoupper($word);
+    }
+    else {
+      $title[] = $word;
+    }
+    $titlename = implode(' ', $title);
+    rename($file['dirname'] . "/" . $file['basename'], $file['dirname'] . "/" . $titlename . "." . $file['extension']);
+    $file = pathinfo($file['dirname'] . "/" . $titlename . "." . $file['extension']);
   }
   return($file);
 }
