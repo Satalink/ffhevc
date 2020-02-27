@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20191214.1032;
+$VERSION = 20200227.0814;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -16,6 +16,7 @@ $lock = proclock($proc);
 function getDefaultOptions($args) {
   $options = array();
   $HOME = getenv("HOME");
+
   $external_paths_file = "${HOME}/bin/hevc_paths.ini";
 //Format: (don't end line with comma in external file)
   /* example hevc_paths.ini key locations configurations
@@ -72,6 +73,9 @@ function getDefaultOptions($args) {
    *
    *    NOTE: External Paths Config OVERRIDES THESE VALUES
    */
+
+  $options['owner'] = "";
+  $options['group'] = "Administrators";
   $options['video']['quality_factor'] = 1.29;  //Range 1.00 to 3.00 (QualityBased: vmin-vmax overrides VBR Quality. Bitrate will not drop below VBR regardless of vmin-vmax settings)
   $options['video']['vmin'] = "1";
   $options['video']['vmax'] = "35";  // The lower the value, the higher the quality/bitrate
@@ -94,6 +98,7 @@ function getDefaultOptions($args) {
   $options['audio']['sample_rate'] = 48000;
 
   $options['args']['application'] = $args['application'];
+  $options['args']['verbose'] = false;
   $options['args']['test'] = false;
   $options['args']['yes'] = false;
   $optiosn['args']['keys'] = false;
@@ -109,6 +114,7 @@ function getDefaultOptions($args) {
   $options['args']['delay'] = 30; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
+  $options['args']['timelock'] = false;  //Track if file has a timestamp that is in the future
   $options['args']['threads'] = 0;
   $options['args']['maxmuxqueuesize'] = 4096;
   $options['args']['pix_fmts'] = array(//acceptable pix_fmts
@@ -234,7 +240,6 @@ if (count($argv) > 1) {
 else {
 //no arguments, use current dir to parse location settings
   $dir = getcwd();
-//  $options = getDefaultOptions($args);
   $options = getLocationOptions($options, $args, $dir);
   $args['key'] = null;
   if (!empty($options['args']) && array_key_exists("key", $options['args'])) {
@@ -275,7 +280,8 @@ function processItem($dir, $item, $options, $args) {
   proctouch($lock);
   $extensions = getExtensions();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
-  $file = titlecase_filename($file);
+  $file = titlecase_filename($file, $options);
+
   if (
     !isset($file['extension']) ||
     !in_array(strtolower($file['extension']), $extensions)
@@ -312,6 +318,7 @@ function processItem($dir, $item, $options, $args) {
   if (filemtime($file['basename']) > time()) {
     touch($file['basename'], time()); //file time is in the future (created overseas?), set it to current time.
     print $file['basename'] . " modified in the future (was reset to now) Try again in " . $options['args']['delay'] . " seconds.";
+    $options['args']['timelock'] = true;
     return;
   }
   elseif ((filemtime($file['basename']) + $options['args']['delay']) > time() && filemtime($file['basename']) <= time() && !$options['args']['force']) {
@@ -401,7 +408,7 @@ function processItem($dir, $item, $options, $args) {
     $options['args']['loglev'] . " " .
     "-i \"" . $file['basename'] . "\" " .
     "-threads " . $options['args']['threads'] . " " .
-    "-profile " . $options['profile'] . " " .
+    "-profile:v " . $options['profile'] . " " .
     "-f " . $options['format'] . " " .
     $options['args']['video'] . " " .
     $options['args']['audio'] . " " .
@@ -428,8 +435,7 @@ function processItem($dir, $item, $options, $args) {
   }
   rename($file['filename'] . ".hevc", $file['filename'] . $options['extension']);
   $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
-  set_permissions($file, $options);
-  restore_owner($file, $options);
+  set_fileattr($file, $options);
   $inforig = $info;
   $info = ffprobe($file, $options);
   if (empty($info)) {
@@ -463,6 +469,8 @@ function processItem($dir, $item, $options, $args) {
           //move file to destination path defined in (external_ini_file)
           print "\033[01;32mMOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\033[0m\n";
           rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
+          set_fileattr($file, $options);
+          titlecase_filename($file, $options);
         }
       }
     }
@@ -516,7 +524,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   }
 
   if (isset($info['format']['exclude']) && $info['format']['exclude'] == "1" && !$options['args']['force']) {
-    print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --force option to override.\n";
+    if ($options['args']['verbose']) {
+      print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --force option to override.\n";
+    }
     $options = array();
     return($options);
   }
@@ -734,7 +744,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
 //Clear Old Tags
   $keep_vtags = array(
     "bps",
-    "bps-" . $options['args']['language'],
     "bit_rate",
     "duration",
     "duration-" . $options['args']['language'],
@@ -753,7 +762,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     "sample_rate",
     "bit_rate",
     "bps",
-    "bps-" . $options['args']['language'],
   );
 
   if (!empty($info['vtags'])) {
@@ -798,7 +806,7 @@ function ffprobe($file, $options) {
   if (!file_exists("./.xml")) {
     mkdir("./.xml");
   }
-  if (!file_exists("./.xml/" . $xmlfile)) {
+  if (!file_exists("./.xml/${xmlfile}")) {
     $action = "PROBED";
     $cmdln = "ffprobe $exec_args '$basename' > './.xml/${xmlfile}'";
     $result = exec("$cmdln");
@@ -1017,6 +1025,7 @@ function getCommandLineOptions($options, $args) {
   \033[01;33me.g.   $>" . $args['application'] . " --test MediaFileName.mkv
   \033[01;33me.g.   $>" . $args['application'] . " --keeporiginal tv
   \033[01;32mBOOLS (Default false)\033[01;34m
+  --verbose    :flag:        display verbose output
   --test          :flag:        print out ffmpeg generated command line only -- and exit
   --yes           :flag:        answer yes to any prompts
   --keys          :flag:        print out the defined keys -- and exit
@@ -1058,6 +1067,9 @@ function getCommandLineOptions($options, $args) {
   }
   if (array_key_exists("yes", $cmd_ln_opts)) {
     $options['args']['yes'] = true;
+  }
+  if (array_key_exists("verbose", $cmd_ln_opts)) {
+    $options['args']['verbose'] = true;
   }
   if (array_key_exists("force", $cmd_ln_opts)) {
     $options['args']['force'] = true;
@@ -1223,14 +1235,16 @@ function strip_illegal_chars($file) {
   return($file);
 }
 
-function titlecase_filename($file) {
+function titlecase_filename($file, $options) {
   $excluded_words = array('a', 'an', 'and', 'at', 'but', 'by', 'else', 'etc', 'for', 'from', 'if', 'in', 'into', 'is', 'of', 'or', 'nor', 'on', 'to', 'that', 'the', 'then', 'when', 'with');
-  $allcap_words = array("us");
+  $allcap_words = array("us", "fbi", "pd");
   $words = explode(' ', strtolower($file['filename']));
   $title = array();
   $firstword = true;
   foreach ($words as $word) {
-    if ((!in_array($word, $excluded_words) && !in_array($word, $allcap_words) && !preg_match("/[s]\d+[e]\d+/", $word)) || $firstword) {
+    if ((!in_array($word, $excluded_words) && !in_array($word, $allcap_words) && !preg_match("/[s]\d+[e]\d+/", $word)) ||
+      ($firstword && !in_array($word, $allcap_words))
+    ) {
       $title[] = ucwords($word);
       $firstword = false;
     }
@@ -1242,8 +1256,10 @@ function titlecase_filename($file) {
     }
     $titlename = implode(' ', $title);
     rename($file['dirname'] . "/" . $file['basename'], $file['dirname'] . "/" . $titlename . "." . $file['extension']);
-    $file = pathinfo($file['dirname'] . "/" . $titlename . "." . $file['extension']);
+    $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $titlename . "." . $file['extension']);
   }
+  chgrp($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['group']);
+  chmod($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['permissions']);
   return($file);
 }
 
@@ -1267,14 +1283,10 @@ function procunlock($lock, $procname) {
   unlink($lockfile);
 }
 
-function restore_owner($file, $options) {
-  if ($options['args']['keepowner'] && isset($options['owner'])) {
+function set_fileattr($file, $options) {
+  if (($options['args']['keepowner'] || isset($options['owner']) ) && !$options['args']['timelock']) {
     chown($file['basename'], $options['owner']);
-  }
-}
-
-function set_permissions($file, $options) {
-  if ($options['args']['permissions']) {
+    chgrp($file['basename'], $options['group']);
     chmod($file['basename'], $options['args']['permissions']);
   }
 }
