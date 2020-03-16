@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20200227.0814;
+$VERSION = 20200316.1414;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -767,6 +767,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   if (!empty($info['vtags'])) {
     foreach ($info['vtags'] as $vtag => $vval) {
       if (!array_key_exists($vtag, $keep_vtags)) {
+        // Set the existing value to nothing
         $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=";
       }
     }
@@ -774,6 +775,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   if (!empty($info['atags'])) {
     foreach ($info['atags'] as $atag => $aval) {
       if (!array_key_exists($atag, $keep_atags)) {
+        // Set the existing value to nothing
         $options['args']['meta'] .= " -metadata:s:a:0 ${atag}=";
       }
     }
@@ -867,10 +869,10 @@ function ffprobe($file, $options) {
               if (preg_match('/mkvmerge/', $tag_val)) {
                 $info['video']['mkvmerge'] = $tag_val;
               }
-              if (preg_match('/^bps/i', $tag_key) && !isset($info['video']['bitrate'])) {
+              if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
                 $info['video']['bitrate'] = (int) $tag_val;
               }
-              if (preg_match('/^bit[\-\_]rate/i', $tag_key) && !isset($info['video']['bitrate'])) {
+              if (preg_match('/^bit[\-\_]rate$/i', $tag_key) && !isset($info['video']['bitrate'])) {
                 if (preg_match("/k/i", $tag_val)) {
                   $info['video']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
                 }
@@ -906,12 +908,12 @@ function ffprobe($file, $options) {
                   $info['audio']['language'] = $tag_val;
                 }
               }
-              if (preg_match('/^bps/i', $tag_key)) {
+              if (preg_match('/^bps$/i', $tag_key)) {
                 if (empty($info['audio']['bitrate'])) {
                   $info['audio']['bitrate'] = $tag_val;
                 }
               }
-              elseif (preg_match('/bit*rate/i', $tag_key)) {
+              elseif (preg_match('/bit*rate$/i', $tag_key)) {
                 if (empty($info['audio']['bitrate'])) {
                   if (preg_match("/k/i", $tag_val)) {
                     $info['audio']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
@@ -1121,6 +1123,10 @@ function getCommandLineOptions($options, $args) {
   }
   if (array_key_exists("scale", $cmd_ln_opts)) {
     $options['video']['scale'] = $cmd_ln_opts['scale'];
+    if (empty($cmd_ln_opts['scale'])) {
+      echo "usage: option --scale=[value]";
+      exit;
+    }
   }
   if (array_key_exists("pix_fmt", $cmd_ln_opts)) {
     $options['video']['pix_fmt'] = $cmd_ln_opts['pix_fmt'];
@@ -1176,7 +1182,7 @@ function cleanXMLDir($dir, $options) {
           }
           $xfile = pathinfo($xmlfile);
           $mediafile = str_replace("'", "\'", $xfile['filename']) . $options['extension'];
-          if (!file_exists("$mediafile")) {
+          if (!empty($xmlfile) && !file_exists("$mediafile") && file_exists("./.xml" . DIRECTORY_SEPARATOR . "${xmlfile}")) {
             print "\033[01;34mCleaned XML for NonExists: $dir" . DIRECTORY_SEPARATOR . $mediafile . "\033[0m\n";
             unlink("./.xml" . DIRECTORY_SEPARATOR . $xmlfile);
           }
@@ -1237,7 +1243,7 @@ function strip_illegal_chars($file) {
 
 function titlecase_filename($file, $options) {
   $excluded_words = array('a', 'an', 'and', 'at', 'but', 'by', 'else', 'etc', 'for', 'from', 'if', 'in', 'into', 'is', 'of', 'or', 'nor', 'on', 'to', 'that', 'the', 'then', 'when', 'with');
-  $allcap_words = array("us", "fbi", "pd");
+  $allcap_words = array("us", "fbi", "pd", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x");
   $words = explode(' ', strtolower($file['filename']));
   $title = array();
   $firstword = true;
