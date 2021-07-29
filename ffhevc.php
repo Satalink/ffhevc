@@ -18,6 +18,7 @@ function getDefaultOptions($args) {
   $HOME = getenv("HOME");
 
   $external_paths_file = "${HOME}/bin/hevc_paths.ini";
+
 //Format: (don't end line with comma in external file)
   /* example hevc_paths.ini key locations configurations
    *
@@ -90,9 +91,9 @@ function getDefaultOptions($args) {
   $options['video']['hdr']['pix_fmt'] = "yuv420p10le";
   $options['video']['hdr']['params'] = '"colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
 
-  $options['audio']['codecs'] = array("aac");   //("aac", "ac3", "libopus", "mp3") allow these codesc (if bitrate is below location limits)
-  $options['audio']['codec'] = "aac";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
-  $options['audio']['channels'] = 8;
+  $options['audio']['codecs'] = array("ac3");   //("aac", "ac3", "libopus", "mp3") allow these codesc (if bitrate is below location limits)
+  $options['audio']['codec'] = "ac3";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
+  $options['audio']['channels'] = 6;
   $options['audio']['bitrate'] = "640k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
   $options['audio']['quality_factor'] = 1.01; // give bit-rate some tollerance (384114 would pass okay for 384000)
   $options['audio']['sample_rate'] = 48000;
@@ -122,29 +123,29 @@ function getDefaultOptions($args) {
     "yuv420p10le",
     "p010le"
   );
-  $options['args']['subtitle_codecs'] = array(
-    "ass" => "ass",
-    "dks" => "dks",
-    "jacosub" => "jss",
-    "microdvd" => "sub",
-    "mpl2" => "mpl",
-    "mov_text" => "",
-    "pjs" => "pjs",
-    "realtext" => "rt",
-    "sami" => "smi",
-    "ssa" => "ssa",
-    "srt" => "srt",
-    "stl" => "stl",
-    "stuctured" => "ssf",
-//    "subrip" => "srt",
-    "subviewer" => "sub",
-    "subviewer1" => "sub",
-    "svcd" => "svcd",
-    "text" => "txt",
-    "unviversal" => "usf",
-    "vplayer" => "txt",
-    "vobsub" => "idx",
-  );
+//  $options['args']['subtitle_codecs'] = array(
+//    "ass" => "ass",
+//    "dks" => "dks",
+//    "jacosub" => "jss",
+//    "microdvd" => "sub",
+//    "mpl2" => "mpl",
+//    "mov_text" => "",
+//    "pjs" => "pjs",
+//    "realtext" => "rt",
+//    "sami" => "smi",
+//    "ssa" => "ssa",
+//    "srt" => "srt",
+//    "stl" => "stl",
+//    "stuctured" => "ssf",
+////    "subrip" => "srt",
+//    "subviewer" => "sub",
+//    "subviewer1" => "sub",
+//    "svcd" => "svcd",
+//    "text" => "txt",
+//    "unviversal" => "usf",
+//    "vplayer" => "txt",
+//    "vobsub" => "idx",
+//  );
   $options['args']['cmdlnopts'] = array(
     "help",
     "yes",
@@ -326,6 +327,7 @@ function processItem($dir, $item, $options, $args) {
     return;
   }
 
+
 //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
     if (isset($info['video']['mkvmerge'])) {
@@ -457,7 +459,7 @@ function processItem($dir, $item, $options, $args) {
       $reasons[] = "audio stream is missing";
     }
     if (((int) $inforig['format']['size']) < ((int) $info['format']['size'])) {
-      $reasons[] = "original filesize is smaller by (" . formatBytes(($info['format']['size'] - filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")), 0, false);
+      $reasons[] = "original filesize is smaller by (" . formatBytes(($info['format']['size'] - filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")), 0, false) . ")";
     }
 
     if (empty($reasons) || ($options['args']['force'])) {
@@ -478,7 +480,7 @@ function processItem($dir, $item, $options, $args) {
       print "Rollback: " . $file['basename'] . " : ";
       print "  reason(s):";
       foreach ($reasons as $reason) {
-        print "$reason\n";
+        print "\033[01;34m$reason\033[0m\n";
       }
       //conversion failed : Let's cleanup and exclude
       if (file_exists($file['filename'] . ".hevc")) {
@@ -586,6 +588,8 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $scale_option = null;
       }
 
+
+
       $fps_option = "";
       if ($info['video']['fps'] > $options['video']['fps']) {
         $fps_option = " -r " . $options['video']['fps'];
@@ -602,7 +606,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -pix_fmt " . $options['video']['pix_fmt'] .
         " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] .
         $fps_option .
-        " -vsync 1 ";
+        " -vsync 1";
 
       if (isset($scale_option)) {
         $options['args']['video'] .= " -vf \"" . $scale_option . "\"";
@@ -742,6 +746,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   $options['args']['map'] .= "-map 0:s? ";
 
 //Clear Old Tags
+  //lowercase metadata names
   $keep_vtags = array(
     "bps",
     "bit_rate",
@@ -750,7 +755,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     "creation_date",
     "language",
     "codec_name",
+    "rotate"
   );
+  //lowercase metatag names
   $keep_atags = array(
     "title",
     "duration",
@@ -766,17 +773,23 @@ function ffanalyze($info, $options, $args, $dir, $file) {
 
   if (!empty($info['vtags'])) {
     foreach ($info['vtags'] as $vtag => $vval) {
-      if (!array_key_exists($vtag, $keep_vtags)) {
+      if (!array_key_exists(strtolower($vtag), $keep_vtags)) {
         // Set the existing value to nothing
         $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=";
+      }
+      else {
+        $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=${vval}";
       }
     }
   }
   if (!empty($info['atags'])) {
     foreach ($info['atags'] as $atag => $aval) {
-      if (!array_key_exists($atag, $keep_atags)) {
+      if (!array_key_exists(strtolower($atag), $keep_atags)) {
         // Set the existing value to nothing
         $options['args']['meta'] .= " -metadata:s:a:0 ${atag}=";
+      }
+      else {
+        $options['args']['meta'] .= " -metadata:s:a:0 ${atag}=${aval}";
       }
     }
   }
@@ -1165,7 +1178,7 @@ function formatBytes($bytes, $precision, $kbyte) {
 }
 
 function getExtensions() {
-  $extensions = array("mkv", "mp4", "mv4", "m4v", "avi", "mov", "ts", "wmv");
+  $extensions = array("mkv");
   return($extensions);
 }
 
@@ -1216,7 +1229,7 @@ function proclock($procname) {
     $lockdate = file_get_contents($lockfile);
     if (empty($lockdate)) {
       $file = pathinfo($lockfile);
-      $lockdate = filemtime($file['basename']);
+      $lockdate = filemtime($lockfile);
     }
     if (($lockdate + 28800) > time()) {  // if process has been running for 8 hours let it finish and die.
       fclose($lock);
@@ -1243,7 +1256,7 @@ function strip_illegal_chars($file) {
 
 function titlecase_filename($file, $options) {
   $excluded_words = array('a', 'an', 'and', 'at', 'but', 'by', 'else', 'etc', 'for', 'from', 'if', 'in', 'into', 'is', 'of', 'or', 'nor', 'on', 'to', 'that', 'the', 'then', 'when', 'with');
-  $allcap_words = array("us", "fbi", "pd", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x");
+  $allcap_words = array("us", "fbi", "pd", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xl");
   $words = explode(' ', strtolower($file['filename']));
   $title = array();
   $firstword = true;
