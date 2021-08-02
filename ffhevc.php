@@ -1219,28 +1219,23 @@ function setOption($option) {
 function proclock($procname) {
 //This prevents multiple instances of this script from running.
   $lockfile = "/tmp/${procname}.lock";
+  $lock = null;
   if (file_exists($lockfile)) {
     if (filesize($lockfile) === 0) {
       unlink($lockfile);
-    }
-  }
-  $lock = fopen("$lockfile", 'wr+');
-  if (!flock($lock, LOCK_EX | LOCK_NB)) {
-    $lockdate = file_get_contents($lockfile);
-    if (empty($lockdate)) {
-      $file = pathinfo($lockfile);
+      exit("Empty lock file detected");
+    } else {
       $lockdate = filemtime($lockfile);
+      $locklimit = (24 * 60 * 60); // hours in seconds
+      if (time() > ($lockdate + $locklimit)) {
+        unlink($lockfile);
+        exit("\nStale lock file detected: ${lockfile}");
+      } else {
+        exit("\nAlready running lock file exits: ${lockfile}");
+      }
     }
-    if (($lockdate + 28800) > time()) {  // if process has been running for 8 hours let it finish and die.
-      fclose($lock);
-      unlink($lockfile);
-      exit("\nStale lock file detected ${lockfile}");
-    }
-    else {
-      exit("\nAlready running: file lock exists ${lockfile}");
-    }
-  }
-  else {
+  } else {
+    $lock = fopen("$lockfile", 'wr');
     fwrite($lock, time());
   }
   return($lock);
