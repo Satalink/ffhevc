@@ -4,14 +4,25 @@ $VERSION = 20200316.1414;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
+$stop = "/tmp/hevc.stop";
 $application = end($self);
 $dirs = array();
 $cleaned = array();
 $args = array();
 
-//Only run one instance of this script!
-$proc = explode("\.", $application)[0];
-$lock = proclock($proc);
+//Only run one instance of this script.
+exec("pgrep ffmpeg", $ffmpid);
+exec("pgrep mkvmerge", $mkvmpid);
+if (!empty($ffmpid)) {
+  exit("FFMPEG already running on another process: $ffmpid[0]\n");
+} elseif (!empty($mkvmpid)) {
+  exit("MKVMERGE already running on another process: $mkvmpid[0]\n");
+}
+//If stop file is detected and no other processes detected, delete it and continue.
+if (file_exists("$stop")) {
+  unlink("$stop");
+}
+
 
 function getDefaultOptions($args) {
   $options = array();
@@ -254,16 +265,17 @@ foreach ($dirs as $key => $dir) {
   processRecursive($dir, $options, $args);
 }
 
-procunlock($lock, $proc);
-
 /* ## ## ## STATIC FUNCTIONS ## ## ## */
 
 function processRecursive($dir, $options, $args) {
   $result = array();
+  global $stop;
   $list = array_slice(scandir("$dir"), 2);
-  global $proc;
   foreach ($list as $index => $item) {
-    proccheck($proc);
+    if (file_exists("$stop")) {
+      unlink("$stop");
+      exit("STOP FILE DETECTED: $stop");
+    }
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
       if (!preg_match("/_UNPACK_/", $item)) {
         cleanXMLDir($dir, $options);
@@ -277,8 +289,6 @@ function processRecursive($dir, $options, $args) {
 }
 
 function processItem($dir, $item, $options, $args) {
-  global $lock;
-  proctouch($lock);
   $extensions = getExtensions();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
   $file = titlecase_filename($file, $options);
@@ -1216,30 +1226,6 @@ function setOption($option) {
   return($options);
 }
 
-function proclock($procname) {
-//This prevents multiple instances of this script from running.
-  $lockfile = "/tmp/${procname}.lock";
-  $lock = null;
-  if (file_exists($lockfile)) {
-    if (filesize($lockfile) === 0) {
-      unlink($lockfile);
-      exit("Empty lock file detected");
-    } else {
-      $lockdate = filemtime($lockfile);
-      $locklimit = (24 * 60 * 60); // hours in seconds
-      if (time() > ($lockdate + $locklimit)) {
-        unlink($lockfile);
-        exit("\nStale lock file detected: ${lockfile}");
-      } else {
-        exit("\nAlready running lock file exits: ${lockfile}");
-      }
-    }
-  } else {
-    $lock = fopen("$lockfile", 'wr');
-    fwrite($lock, time());
-  }
-  return($lock);
-}
 
 function strip_illegal_chars($file) {
   if (preg_match('/\'/', $file['filename'])) {
@@ -1275,26 +1261,6 @@ function titlecase_filename($file, $options) {
   chgrp($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['group']);
   chmod($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['permissions']);
   return($file);
-}
-
-function proctouch($lock) {
-  fwrite($lock, time());
-  return($lock);
-}
-
-function proccheck($procname) {
-//This is a safety mechanism that I use to halt the process after the current conversion is complete.
-//To use it, delete the lock file in /tmp and the process will halt after the current operation is done.
-  $lockfile = "/tmp/${procname}.lock";
-  if (!file_exists($lockfile)) {
-    exit("Process Halted: $lockfile missing");
-  }
-}
-
-function procunlock($lock, $procname) {
-  fclose($lock);
-  $lockfile = "/tmp/${procname}.lock";
-  unlink($lockfile);
 }
 
 function set_fileattr($file, $options) {
