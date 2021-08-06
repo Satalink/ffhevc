@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20200316.1414;
+$VERSION = 20210806.1256;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
