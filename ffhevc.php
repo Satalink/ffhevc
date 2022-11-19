@@ -15,14 +15,14 @@ exec("pgrep ffmpeg", $ffmpid);
 exec("pgrep mkvmerge", $mkvmpid);
 if (!empty($ffmpid)) {
   exit("FFMPEG already running on another process: $ffmpid[0]\n");
-} elseif (!empty($mkvmpid)) {
+}
+elseif (!empty($mkvmpid)) {
   exit("MKVMERGE already running on another process: $mkvmpid[0]\n");
 }
 //If stop file is detected and no other processes detected, delete it and continue.
 if (file_exists("$stop")) {
   unlink("$stop");
 }
-
 
 function getDefaultOptions($args) {
   $options = array();
@@ -98,11 +98,12 @@ function getDefaultOptions($args) {
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
 // HDR Conversions Safety Net
-  $options['video']['hdr']['codec'] = "libx265";
+//  $options['video']['hdr']['codec'] = "libx265";
+  $options['video']['hdr']['codec'] = "hevc_nvenc";
   $options['video']['hdr']['pix_fmt'] = "yuv420p10le";
   $options['video']['hdr']['params'] = '"colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
 
-  $options['audio']['codecs'] = array("ac3");   //("aac", "ac3", "libopus", "mp3") allow these codesc (if bitrate is below location limits)
+  $options['audio']['codecs'] = array("ac3");   //("aac", "ac3", "libopus", "mp3") allow these c  $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
   $options['audio']['codec'] = "ac3";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
   $options['audio']['channels'] = 6;
   $options['audio']['bitrate'] = "640k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
@@ -269,9 +270,9 @@ foreach ($dirs as $key => $dir) {
 
 function processRecursive($dir, $options, $args) {
   $result = array();
-  global $stop;
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
+    global $stop;
     if (file_exists("$stop")) {
       unlink("$stop");
       exit("STOP FILE DETECTED: $stop");
@@ -434,7 +435,12 @@ function processItem($dir, $item, $options, $args) {
   if ($options['args']['test']) {
     exit;
   }
-  exec("${cmdln}");
+  exec("${cmdln}", $output, $status);
+  if($status) {
+    //status(255) => CTRL-C    
+    echo "status: >${status}<";    
+    exit;
+  }
 
 #Swap Validate
   if ($options['args']['keepowner']) {
@@ -652,103 +658,109 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   }
 
 //Audio
-  if ($options['audio']['bitrate'] == 0) {
+  if ($options['audio']['bitrate'] == 0 || stripos($info['audio']['title'], "comment")) {
     $info['audio'] = null;
   }
   if (!empty($info['audio'])) {
-    if (
-      in_array($info['audio']['codec'], $options['audio']['codecs']) &&
-      (int) ((filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) * $options['audio']['quality_factor']) &&
-      $info['audio']['channels'] <= $options['audio']['channels'] &&
-      !$options['args']['override']
-    ) {
-      $options['args']['audio'] = "-acodec copy";
-      $options['audio']['channels'] = $info['audio']['channels'];
+    $title = "Default Track";
+    if (!empty($info['audio']['title'])) {
+      $title = isset($info['audio']['title']) ? $info['audio']['title'] : "Default Track";
     }
-    if (preg_match("/copy/i", $options['args']['audio'])) {
-      if ($info['audio']['bitrate'] == 0) {
-        $info['audio']['bitrate'] = "";
-        $info['audio']['bps'] = "";
-      }
-      elseif (
-        isset($info['audio']['bitrate']) &&
-        !empty($info['audio']['bitrate'])
+    if (!stripos($title, "comment")) {
+      if (
+        in_array($info['audio']['codec'], $options['audio']['codecs']) &&
+        (int) ((filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) * $options['audio']['quality_factor']) &&
+        $info['audio']['channels'] <= $options['audio']['channels'] &&
+        !$options['args']['override']
       ) {
+        $options['args']['audio'] = "-acodec copy";
+        $options['audio']['channels'] = $info['audio']['channels'];
+      }
+      if (preg_match("/copy/i", $options['args']['audio'])) {
+        if ($info['audio']['bitrate'] == 0) {
+          $info['audio']['bitrate'] = "";
+          $info['audio']['bps'] = "";
+        }
+        elseif (
+          isset($info['audio']['bitrate']) &&
+          !empty($info['audio']['bitrate'])
+        ) {
+          if (is_numeric($info['audio']['bitrate'])) {
+            $info['audio']['bps'] = $info['audio']['bitrate'];
+            $info['audio']['bitrate'] = (int) round(($info['audio']['bitrate'] / 1000)) . "k";
+          }
+          else {
+            $info['audio']['bps'] = (int) (filter_var($info['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
+          }
+        }
+        else {
+          $info['audio']['bps'] = "";
+        }
+        $options['args']['meta'] .= " -metadata:s:a:0 language=" . $options['args']['language'] . " " .
+          " -metadata:s:a:0 codec_name=" . $info['audio']['codec'] .
+          " -metadata:s:a:0 channels=" . $info['audio']['channels'] .
+          " -metadata:s:a:0 bit_rate=" . $info['audio']['bitrate'] .
+          " -metadata:s:a:0 sample_rate=" . $info['audio']['sample_rate'] .
+          " -metadata:s:a:0 bps=" . $info['audio']['bps'] .
+          " -metadata:s:a:0 title= ";
+      }
+      else {
+        print "\033[01;32mAudio Inspection ->\033[0m" .
+          $info['audio']['codec'] . ":" . $options['audio']['codec'] . "," .
+          $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "\n";
         if (is_numeric($info['audio']['bitrate'])) {
           $info['audio']['bps'] = $info['audio']['bitrate'];
           $info['audio']['bitrate'] = (int) round(($info['audio']['bitrate'] / 1000)) . "k";
         }
-        else {
+        elseif (!empty($info['audio']['bitrate']) && is_integer($info['audio']['bitrate'])) {
           $info['audio']['bps'] = (int) (filter_var($info['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
         }
-      }
-      else {
-        $info['audio']['bps'] = "";
-      }
-      $options['args']['meta'] .= " -metadata:s:a:0 language=" . $options['args']['language'] . " " .
-        " -metadata:s:a:0 codec_name=" . $info['audio']['codec'] .
-        " -metadata:s:a:0 channels=" . $info['audio']['channels'] .
-        " -metadata:s:a:0 bit_rate=" . $info['audio']['bitrate'] .
-        " -metadata:s:a:0 sample_rate=" . $info['audio']['sample_rate'] .
-        " -metadata:s:a:0 bps=" . $info['audio']['bps'] .
-        " -metadata:s:a:0 title= ";
-    }
-    else {
-      print "\033[01;32mAudio Inspection ->\033[0m" .
-        $info['audio']['codec'] . ":" . $options['audio']['codec'] . "," .
-        $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "\n";
-      if (is_numeric($info['audio']['bitrate'])) {
-        $info['audio']['bps'] = $info['audio']['bitrate'];
-        $info['audio']['bitrate'] = (int) round(($info['audio']['bitrate'] / 1000)) . "k";
-      }
-      elseif (!empty($info['audio']['bitrate']) && is_integer($info['audio']['bitrate'])) {
-        $info['audio']['bps'] = (int) (filter_var($info['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
-      }
-      else {
-        $info['audio']['bps'] = (int) (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
-        $info['audio']['bitrate'] = $options['audio']['bitrate'];
-      }
+        else {
+          $info['audio']['bps'] = (int) (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
+          $info['audio']['bitrate'] = $options['audio']['bitrate'];
+        }
 
-      $options['audio']['bps'] = (int) (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
-//Don't upsample source audio
-      if ($info['audio']['bps'] < $options['audio']['bps']) {
-        $options['audio']['bitrate'] = $info['audio']['bitrate'];
-        $options['audio']['bps'] = $info['audio']['bps'];
+        $options['audio']['bps'] = (int) (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
+        //Don't upsample source audio
+        if ($info['audio']['bps'] < $options['audio']['bps']) {
+          $options['audio']['bitrate'] = $info['audio']['bitrate'];
+          $options['audio']['bps'] = $info['audio']['bps'];
+        }
+        if ($info['audio']['channels'] < $options['audio']['channels'] || !isset($options['audio']['channels'])) {
+          $options['audio']['channels'] = $info['audio']['channels'];
+        }
+        if ($info['audio']['sample_rate'] < $options['audio']['sample_rate'] || !isset($options['audio']['sample_rate'])) {
+          $options['audio']['sample_rate'] = $info['audio']['sample_rate'];
+        }
+        //Set audio args
+        if (
+          isset($options['audio']['codec']) &&
+          isset($options['audio']['channels']) &&
+          isset($options['audio']['bitrate']) &&
+          isset($options['audio']['sample_rate'])
+        ) {
+          $options['args']['audio'] = "-acodec " . $options['audio']['codec'] .
+            " -ac " . $options['audio']['channels'] .
+            " -ab " . $options['audio']['bitrate'] .
+            " -ar " . $options['audio']['sample_rate'] .
+            " -async 1";
+        }
+        else {
+          $options['args']['audio'] = "-acodec copy";
+          $options['audio']['channels'] = isset($info['audio']['channels']) ? $info['audio']['channels'] : '';
+          $options['audio']['bitrate'] = isset($info['audio']['bitrate']) ? $info['audio']['bitrate'] : 0;
+          $options['audio']['sample_rate'] = isset($info['audio']['sample_rate']) ? $info['audio']['sample_rate'] : '';
+        }
+        $options['args']['meta'] .= " -metadata:s:a:0 language=" . $options['args']['language'] . " " .
+          " -metadata:s:a:0 codec_name=" . $options['audio']['codec'] .
+          " -metadata:s:a:0 channels=" . $options['audio']['channels'] .
+          " -metadata:s:a:0 bit_rate=" . $options['audio']['bitrate'] .
+          " -metadata:s:a:0 sample_rate=" . $options['audio']['sample_rate'] .
+          " -metadata:s:a:0 bps=" . $options['audio']['bps'] .
+          " -metadata:s:a:0 title=" . isset($info['audio']['title']) ? $info['audio']['title'] : "Default Track";
       }
-      if ($info['audio']['channels'] < $options['audio']['channels'] || !isset($options['audio']['channels'])) {
-        $options['audio']['channels'] = $info['audio']['channels'];
-      }
-      if ($info['audio']['sample_rate'] < $options['audio']['sample_rate'] || !isset($options['audio']['sample_rate'])) {
-        $options['audio']['sample_rate'] = $info['audio']['sample_rate'];
-      }
-//Set audio args
-      if (
-        isset($options['audio']['codec']) &&
-        isset($options['audio']['channels']) &&
-        isset($options['audio']['bitrate']) &&
-        isset($options['audio']['sample_rate'])
-      ) {
-        $options['args']['audio'] = "-acodec " . $options['audio']['codec'] .
-          " -ac " . $options['audio']['channels'] .
-          " -ab " . $options['audio']['bitrate'] .
-          " -ar " . $options['audio']['sample_rate'] .
-          " -async 1";
-      }
-      else {
-        $options['args']['audio'] = "-acodec copy";
-        $options['audio']['channels'] = isset($info['audio']['channels']) ? $info['audio']['channels'] : '';
-        $options['audio']['bitrate'] = isset($info['audio']['bitrate']) ? $info['audio']['bitrate'] : 0;
-        $options['audio']['sample_rate'] = isset($info['audio']['sample_rate']) ? $info['audio']['sample_rate'] : '';
-      }
-      $options['args']['meta'] .= " -metadata:s:a:0 language=" . $options['args']['language'] . " " .
-        " -metadata:s:a:0 codec_name=" . $options['audio']['codec'] .
-        " -metadata:s:a:0 channels=" . $options['audio']['channels'] .
-        " -metadata:s:a:0 bit_rate=" . $options['audio']['bitrate'] .
-        " -metadata:s:a:0 sample_rate=" . $options['audio']['sample_rate'] .
-        " -metadata:s:a:0 bps=" . $options['audio']['bps'] .
-        " -metadata:s:a:0 title= ";
+      $options['args']['map'] .= "-map 0:a? ";
     }
-    $options['args']['map'] .= "-map 0:a? ";
   }
 
 //Subtexts
@@ -794,7 +806,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   }
   if (!empty($info['atags'])) {
     foreach ($info['atags'] as $atag => $aval) {
-      if (!array_key_exists(strtolower($atag), $keep_atags)) {
+      if ((!array_key_exists(strtolower($atag), $keep_atags))) {
         // Set the existing value to nothing
         $options['args']['meta'] .= " -metadata:s:a:0 ${atag}=";
       }
@@ -911,6 +923,7 @@ function ffprobe($file, $options) {
           if (empty($info['audio'])) {
             $atags = array();
             $info['audio']['index'] = getXmlAttribute($stream, "index");
+            $info['audio']['title'] = getXmlAttribute($stream, "title");
             $info['audio']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['audio']['codec'] = getXmlAttribute($stream, "codec_name");
             $info['audio']['channels'] = getXmlAttribute($stream, "channels");
@@ -995,6 +1008,7 @@ function ffprobe($file, $options) {
     }
     if (!preg_match('/n/i', $del)) {
       unlink($file['basename']);
+      print $file['basename'] . " DELETED";
       $info = array();
     }
   }
@@ -1226,7 +1240,6 @@ function setOption($option) {
   return($options);
 }
 
-
 function strip_illegal_chars($file) {
   if (preg_match('/\'/', $file['filename'])) {
     rename($file['dirname'] . "/" . $file['basename'], $file['dirname'] . "/" . str_replace("'", "", ($file['filename'])) . "." . $file['extension']);
@@ -1238,10 +1251,14 @@ function strip_illegal_chars($file) {
 function titlecase_filename($file, $options) {
   $excluded_words = array('a', 'an', 'and', 'at', 'but', 'by', 'else', 'etc', 'for', 'from', 'if', 'in', 'into', 'is', 'of', 'or', 'nor', 'on', 'to', 'that', 'the', 'then', 'when', 'with');
   $allcap_words = array("us", "fbi", "pd", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xl");
-  $words = explode(' ', strtolower($file['filename']));
+  $allcap_words_char_count = 4;
+  $words = explode(' ', $file['filename']);
   $title = array();
   $firstword = true;
   foreach ($words as $word) {
+    if (!ctype_upper($word) && (strlen($word) > $allcap_words_char_count)) {
+      $word = strtolower($word);
+    }
     if ((!in_array($word, $excluded_words) && !in_array($word, $allcap_words) && !preg_match("/[s]\d+[e]\d+/", $word)) ||
       ($firstword && !in_array($word, $allcap_words))
     ) {
@@ -1258,8 +1275,10 @@ function titlecase_filename($file, $options) {
     rename($file['dirname'] . "/" . $file['basename'], $file['dirname'] . "/" . $titlename . "." . $file['extension']);
     $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $titlename . "." . $file['extension']);
   }
-  chgrp($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['group']);
-  chmod($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['permissions']);
+  if (file_exists($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'])){
+    chgrp($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['group']);
+    chmod($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['permissions']);
+  }
   return($file);
 }
 
