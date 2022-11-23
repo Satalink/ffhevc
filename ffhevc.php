@@ -277,6 +277,10 @@ function processRecursive($dir, $options, $args) {
       unlink("$stop");
       exit("STOP FILE DETECTED: $stop");
     }
+    if (is_link($dir . DIRECTORY_SEPARATOR . $item )) {
+      print "SKIPPED SYMLINK: ${dir}" . DIRECTORY_SEPARATOR . "${item}\n";
+      continue;  //skip symbolic links
+    }
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
       if (!preg_match("/_UNPACK_/", $item)) {
         cleanXMLDir($dir, $options);
