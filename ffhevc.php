@@ -34,13 +34,13 @@ function getDefaultOptions($args) {
   /* example hevc_paths.ini key locations configurations
    *
    *
-    #"key" => "/path/to/video/library|audioK|vmin|vmax|quality_factor|scale|fps|contrast|brightness|saturation|gamma|/optional/destination/path"
-    "gopro" => "/cygdrive/e/Videos/GoPro|128k|10|32|2|720|30|1.07|0.02|1.02|0.95"
-    "goarchive" => "/cygdrive/e/Videos/GoPro/archived|64k|10|38|0.75|640|18|1|0|1|1"
-    "tv" => "/cygdrive/e/TV_Shows|384k|1|38|0.75|720|25|1|0|1|1"
-    "mov" => "/cygdrive/e/Movies|512k|1|36|0.75|2160|30|1|0|1|1"
-    "newtv" => "/cygdrive/c/Temp/TV_Shows|384k|1|38|0.75|720|25|1|0|1|1|/cygdrive/e/TV_Shows"
-    "new" => "/cygdrive/c/Temp/Movies|512k|1|36|0.75|2160|30|1|0|1|1|/cygdrive/e/Movies"
+    #"key" => "/path/to/video/library|audioChannels|audioK|vmin|vmax|quality_factor|scale|fps|contrast|brightness|saturation|gamma|/optional/destination/path"
+    "gopro" => "/cygdrive/e/Videos/GoPro|2|128k|10|32|2|720|30|1.07|0.02|1.02|0.95"
+    "goarchive" => "/cygdrive/e/Videos/GoPro/archived|2|64k|10|38|0.75|640|18|1|0|1|1"
+    "tv" => "/cygdrive/e/TV_Shows|6|384k|1|38|0.75|720|25|1|0|1|1"
+    "mov" => "/cygdrive/e/Movies|8|512k|1|36|0.75|2160|30|1|0|1|1"
+    "newtv" => "/cygdrive/c/Temp/TV_Shows|6|384k|1|38|0.75|720|25|1|0|1|1|/cygdrive/e/TV_Shows"
+    "new" => "/cygdrive/c/Temp/Movies|7|512k|2|36|0.75|2160|30|1|0|1|1|/cygdrive/e/Movies"
    *
    * This allows for paths to be added without modifying the script
    * (i.e. update script without mucking up configured paths)
@@ -61,10 +61,10 @@ function getDefaultOptions($args) {
   }
   else {
 # directory config format is:
-#"key" => "/path/to/video/library|audioK|vmin|vmax|quality_factor|scale|fps|contrast|brightness|saturation|gamma/optional/destination/path"
+#"key" => "/path/to/video/library|audioChannels|audioK|vmin|vmax|quality_factor|scale|fps|contrast|brightness|saturation|gamma/optional/destination/path"
     $options['locations'] = array(
-      "tv" => "/path/to/TV_Shows|384k|1|38|0.75|720|25|1|0|1|1|/optional/desitnation/path",
-      "mov" => "/path/to/Movies|640k|1|33|0.9|2160|30|1|0|1|1|/optional/desitnation/path"
+      "tv" => "/path/to/TV_Shows|6|384k|1|38|0.75|720|25|1|0|1|1|/optional/desitnation/path",
+      "mov" => "/path/to/Movies|8|640k|1|33|0.9|2160|30|1|0|1|1|/optional/desitnation/path"
     );
   }
 
@@ -98,15 +98,15 @@ function getDefaultOptions($args) {
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
 // HDR Conversions Safety Net
-//  $options['video']['hdr']['codec'] = "libx265";
+//  $options['video']['hdr']['codec'] = "libx265" // If you're video card does not support HDR;
   $options['video']['hdr']['codec'] = "hevc_nvenc";
   $options['video']['hdr']['pix_fmt'] = "yuv420p10le";
   $options['video']['hdr']['params'] = '"colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
 
-  $options['audio']['codecs'] = array("ac3");   //("aac", "ac3", "libopus", "mp3") allow these c  $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
-  $options['audio']['codec'] = "ac3";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
+  $options['audio']['codecs'] = array("aac", "ac3", "ac-3", "eac3",);   //("aac", "ac3", "libopus", "mp3") allow these c  $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
+  $options['audio']['codec'] = "eac3";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
   $options['audio']['channels'] = 6;
-  $options['audio']['bitrate'] = "640k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
+  $options['audio']['bitrate'] = "720k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
   $options['audio']['quality_factor'] = 1.01; // give bit-rate some tollerance (384114 would pass okay for 384000)
   $options['audio']['sample_rate'] = 48000;
 
@@ -118,8 +118,9 @@ function getDefaultOptions($args) {
   $options['args']['force'] = false;
   $options['args']['skip'] = false;
   $options['args']['override'] = false;
+  $options['args']['followlinks'] = false;
   $options['args']['exclude'] = false;  // if true, the xml file will be flagged exclude for the processing the media.
-  $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig)
+  $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig.ext)
   $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['language'] = "eng";  // Default language track
@@ -135,29 +136,7 @@ function getDefaultOptions($args) {
     "yuv420p10le",
     "p010le"
   );
-//  $options['args']['subtitle_codecs'] = array(
-//    "ass" => "ass",
-//    "dks" => "dks",
-//    "jacosub" => "jss",
-//    "microdvd" => "sub",
-//    "mpl2" => "mpl",
-//    "mov_text" => "",
-//    "pjs" => "pjs",
-//    "realtext" => "rt",
-//    "sami" => "smi",
-//    "ssa" => "ssa",
-//    "srt" => "srt",
-//    "stl" => "stl",
-//    "stuctured" => "ssf",
-////    "subrip" => "srt",
-//    "subviewer" => "sub",
-//    "subviewer1" => "sub",
-//    "svcd" => "svcd",
-//    "text" => "txt",
-//    "unviversal" => "usf",
-//    "vplayer" => "txt",
-//    "vobsub" => "idx",
-//  );
+
   $options['args']['cmdlnopts'] = array(
     "help",
     "yes",
@@ -166,6 +145,7 @@ function getDefaultOptions($args) {
     "force",
     "nomkvmerge",
     "override",
+    "followlinks",
     "exclude",
     "keeporiginal",
     "keepowner",
@@ -277,8 +257,8 @@ function processRecursive($dir, $options, $args) {
       unlink("$stop");
       exit("STOP FILE DETECTED: $stop");
     }
-    if (is_link($dir . DIRECTORY_SEPARATOR . $item )) {
-      print "SKIPPED SYMLINK: ${dir}" . DIRECTORY_SEPARATOR . "${item}\n";
+    if (!$options['args']['followlinks'] && is_link($dir . DIRECTORY_SEPARATOR . $item )) {
+      //print "SKIPPED SYMLINK: ${dir}" . DIRECTORY_SEPARATOR . "${item}\n";
       continue;  //skip symbolic links
     }
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
@@ -403,16 +383,23 @@ function processItem($dir, $item, $options, $args) {
     $options['profile'] = "main10";
   }
 
+  if ($info['video']['fps'] > $options['video']['fps']) {
+    $fps_option = " -r " . $options['video']['fps'];
+  }
+  else {
+    $options['video']['fps'] = $info['video']['fps'];
+    $fps_option = "";
+  }  
+
   if ($info['video']['hdr']) {
-    $options['args']['video'] = "-vcodec " . $options['video']['hdr']['codec'] .
+    $options['args']['video'] .=
       " -x265-params " . $options['video']['hdr']['params'] .
       " -pix_fmt " . $options['video']['hdr']['pix_fmt'] .
       " -vb " . $options['video']['vps'] .
       " -qmin " . $options['video']['vmin'] .
       " -qmax " . $options['video']['vmax'] .
-      " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] .
-      $fps_option .
-      " -vsync 1 ";
+      " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] . 
+      $fps_option;
 
     $options['args']['exclude'] = true;
   }
@@ -450,7 +437,7 @@ function processItem($dir, $item, $options, $args) {
   if ($options['args']['keepowner']) {
     $options['owner'] = fileowner($file['basename']);
   }
-  rename($file['basename'], $file['filename'] . "." . $file['extension'] . ".orig");
+  rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
   $fileorig = $file;
   if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
     unlink("./.xml/" . $file['filename'] . ".xml");
@@ -466,7 +453,7 @@ function processItem($dir, $item, $options, $args) {
 
 #Validate
   if (!$options['args']['keeporiginal']) {
-    $mtime = filemtime($fileorig['filename'] . "." . $fileorig['extension'] . ".orig");
+    $mtime = filemtime($fileorig['filename'] . ".orig." . $fileorig['extension']);
 
     $reasons = array();
     if ($info['format']['probe_score'] < 100) {
@@ -479,12 +466,15 @@ function processItem($dir, $item, $options, $args) {
       $reasons[] = "audio stream is missing";
     }
     if (((int) $inforig['format']['size']) < ((int) $info['format']['size'])) {
-      $reasons[] = "original filesize is smaller by (" . formatBytes(($info['format']['size'] - filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig")), 0, false) . ")";
+      $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 0, false) . ")";
     }
 
     if (empty($reasons) || ($options['args']['force'])) {
-      echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . formatBytes(filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig"), 2, true) . " [orig] - " . formatBytes($info['format']['size'], 2, true) . " [new] = \033[01;32m" . formatBytes((filesize($fileorig['filename'] . "." . $fileorig['extension'] . ".orig") - $info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
-      unlink($fileorig['filename'] . "." . $fileorig['extension'] . ".orig");
+      echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . 
+        formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 2, true) . 
+        " [orig] - " . formatBytes($info['format']['size'], 2, true) . 
+        " [new] = \033[01;32m" . formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
+      unlink($fileorig['filename'] . ".orig." . $fileorig['extension']);
       if (file_exists($file['filename'] . $options['extension'])) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination'])) {
@@ -509,7 +499,7 @@ function processItem($dir, $item, $options, $args) {
       if (file_exists($file['filename'] . "." . $options['extension'])) {
         unlink($file['filename'] . "." . $options['extension']);
       }
-      rename($file['filename'] . "." . $file['extension'] . ".orig", $file['basename']);
+      rename($file['filename'] . ".orig." . $file['extension'], $file['basename']);
       if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
         unlink("./.xml/" . $file['filename'] . ".xml");
         $options['args']['exclude'] = true;
@@ -587,6 +577,10 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       $options['args']['video'] = "-vcodec copy";
     }
 
+  // var_dump($info['video']);
+  // var_dump($options['video']);
+  // exit;
+
     if (!preg_match("/copy/i", $options['args']['video'])) {
       print "\033[01;32mVideo Inspection ->\033[0m" .
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
@@ -595,6 +589,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $info['video']['bitrate'] . "<=" . ( $options['video']['bps'] * $options['video']['quality_factor']) . "," . // give some tollerance
         $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
       list($ratio_w, $ratio_h) = explode(":", $info['video']['ratio']);
+      
       if ($info['video']['height'] > $options['video']['scale']) {
         //hard set info to be used for bitrate calculation based on scaled resolution
         $info['video']['width'] = (($info['video']['width'] * $options['video']['scale']) / $info['video']['height']);
@@ -608,14 +603,12 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $scale_option = null;
       }
 
-
-
-      $fps_option = "";
       if ($info['video']['fps'] > $options['video']['fps']) {
         $fps_option = " -r " . $options['video']['fps'];
       }
       else {
         $options['video']['fps'] = $info['video']['fps'];
+        $fps_option = "";
       }
 
       $options['args']['video'] = '' .
@@ -1033,18 +1026,19 @@ function getLocationOptions($options, $args, $dir) {
       $key = $args['key'];
       $location_param_array = explode("|", $location);
       $dirs["$key"] = $location_param_array[0];
-      $options['audio']['bitrate'] = $location_param_array[1];
-      $options['video']['vmin'] = $location_param_array[2];
-      $options['video']['vmax'] = $location_param_array[3];
-      $options['video']['quality_factor'] = $location_param_array[4];
-      $options['video']['scale'] = $location_param_array[5];
-      $options['video']['fps'] = $location_param_array[6];
-      $options['video']['contrast'] = $location_param_array[7];
-      $options['video']['brightness'] = $location_param_array[8];
-      $options['video']['saturation'] = $location_param_array[9];
-      $options['video']['gamma'] = $location_param_array[10];
-      if (array_key_exists(11, $location_param_array)) {
-        $options['args']['destination'] = $location_param_array[11];
+      $options['audio']['channels'] = $location_param_array[1];
+      $options['audio']['bitrate'] = $location_param_array[2];
+      $options['video']['vmin'] = $location_param_array[3];
+      $options['video']['vmax'] = $location_param_array[4];
+      $options['video']['quality_factor'] = $location_param_array[5];
+      $options['video']['scale'] = $location_param_array[6];
+      $options['video']['fps'] = $location_param_array[7];
+      $options['video']['contrast'] = $location_param_array[8];
+      $options['video']['brightness'] = $location_param_array[9];
+      $options['video']['saturation'] = $location_param_array[10];
+      $options['video']['gamma'] = $location_param_array[11];
+      if (array_key_exists(12, $location_param_array)) {
+        $options['args']['destination'] = $location_param_array[12];
       }
     }
   }
@@ -1055,7 +1049,7 @@ function getLocationOptions($options, $args, $dir) {
 
 function getAudioBitrate($options, $args) {
   if (!empty($args['key']) && array_key_exists($args['key'], $options['locations'])) {
-    $options['audio']['bitrate'] = explode("|", $options['locations'][$args['key']])[1];
+    $options['audio']['bitrate'] = explode("|", $options['locations'][$args['key']])[2];
   }
   return($options);
 }
@@ -1076,7 +1070,7 @@ function getCommandLineOptions($options, $args) {
   --override      :flag:        reencode and override existing files (redo all existing regardless)
   --exclude       :flag:        exclude from being processed (ignore this video), stored in .xml
   --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
-  --keeporiginal  :flag:        keep the original file and save as filename.ext.orig
+  --keeporiginal  :flag:        keep the original file and save as filename.orig.ext
   --keepowner     :flag:        keep the original file owner for the newly created file
   --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language
 
@@ -1254,7 +1248,7 @@ function strip_illegal_chars($file) {
 
 function titlecase_filename($file, $options) {
   $excluded_words = array('a', 'an', 'and', 'at', 'but', 'by', 'else', 'etc', 'for', 'from', 'if', 'in', 'into', 'is', 'of', 'or', 'nor', 'on', 'to', 'that', 'the', 'then', 'when', 'with');
-  $allcap_words = array("us", "fbi", "pd", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xl");
+  $allcap_words = array("us", "usa", "acc", "ac3", "eac3", "hdr", "dvd", "sdtv", "dvd-r", "hdtv", "webrip", "webdl", "remux", "fbi", "pd", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xl");
   $allcap_words_char_count = 4;
   $words = explode(' ', $file['filename']);
   $title = array();
