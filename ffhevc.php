@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20210806.1256;
+$VERSION = 20221129.1003;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -91,12 +91,14 @@ function getDefaultOptions($args) {
   $options['video']['quality_factor'] = 1.29;  //Range 1.00 to 3.00 (QualityBased: vmin-vmax overrides VBR Quality. Bitrate will not drop below VBR regardless of vmin-vmax settings)
   $options['video']['vmin'] = "1";
   $options['video']['vmax'] = "35";  // The lower the value, the higher the quality/bitrate
+  $options['video']['max_streams'] = 1;
   $options['video']['fps'] = 29.97;
   $options['video']['scale'] = 2160;  // max video resolution setting
   $options['video']['contrast'] = 1;
   $options['video']['brightness'] = 0;
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
+
 // HDR Conversions Safety Net
 //  $options['video']['hdr']['codec'] = "libx265" // If you're video card does not support HDR;
   $options['video']['hdr']['codec'] = "hevc_nvenc";
@@ -109,6 +111,7 @@ function getDefaultOptions($args) {
   $options['audio']['bitrate'] = "720k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
   $options['audio']['quality_factor'] = 1.01; // give bit-rate some tollerance (384114 would pass okay for 384000)
   $options['audio']['sample_rate'] = 48000;
+  $options['audio']['max_streams'] = 1;  //Maximum number of audio streams to keep
 
   $options['args']['application'] = $args['application'];
   $options['args']['verbose'] = false;
@@ -571,6 +574,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       preg_match(strtolower("/$codec_name/"), $info['video']['codec']) &&
       (in_array($info['video']['pix_fmt'], $options['args']['pix_fmts'])) &&
       ($info['video']['height'] <= $options['video']['scale']) &&
+      ($info['video']['bitrate'] > 0) &&
       ($info['video']['bitrate'] <= ($options['video']['bps'] * $options['video']['quality_factor'])) &&
       (!$options['args']['override'])
     ) {
