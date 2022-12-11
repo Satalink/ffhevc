@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20221210.1118;
+$VERSION = 20221211.1403;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -881,10 +881,10 @@ function ffprobe($file, $options) {
             foreach ($stream->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
-              $vtags[$tag_key] = $tag_val;
+              $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
 //              print "\n" . $tag_key . " : " . $tag_val . "\n";
               if (preg_match('/mkvmerge/', $tag_val)) {
-                $info['video']['mkvmerge'] = $tag_val;
+                $info['video']['mkvmerge'] = "$tag_val";
               }
               if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
                 $info['video']['bitrate'] = (int) $tag_val;
@@ -897,6 +897,7 @@ function ffprobe($file, $options) {
                   $info['video']['bitrate'] = (int) $tag_val;
                 }
               }
+              $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
             }
             $info['vtags'] = $vtags;
           }
@@ -914,8 +915,11 @@ function ffprobe($file, $options) {
             foreach ($stream->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
-              $atags[$tag_key] = $tag_val;
+              $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
 //              print "\n" . $tag_key . " : " . $tag_val . "\n";
+              if (preg_match('/mkvmerge/', $tag_val)) {
+                $info['audio']['mkvmerge'] = "$tag_val";
+              }
               if ($tag_key == "language") {
                 if ($tag_val !== $options['args']['language']) {
                   $info['filters']['audio']['language'][] = $tag_val;
@@ -941,6 +945,7 @@ function ffprobe($file, $options) {
                   }
                 }
               }
+              $atags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
             }
             $info['atags'] = $atags;
           }
