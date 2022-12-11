@@ -89,6 +89,7 @@ function getDefaultOptions($args) {
   $options['owner'] = "";
   $options['group'] = "Administrators";
   $options['video']['quality_factor'] = 1.29;  //Range 1.00 to 3.00 (QualityBased: vmin-vmax overrides VBR Quality. Bitrate will not drop below VBR regardless of vmin-vmax settings)
+  $options['video']['filesize_tollerance'] = 1.05;  // If the re-encoded file is greater than original by x%, keep re-encoded file (should be greater than or equal to 1.00)
   $options['video']['vmin'] = "1";
   $options['video']['vmax'] = "35";  // The lower the value, the higher the quality/bitrate
   $options['video']['max_streams'] = 1;
@@ -98,10 +99,7 @@ function getDefaultOptions($args) {
   $options['video']['brightness'] = 0;
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
-
-// HDR Conversions Safety Net
-//  $options['video']['hdr']['codec'] = "libx265" // If you're video card does not support HDR;
-  $options['video']['hdr']['codec'] = "hevc_nvenc";
+  $options['video']['hdr']['codec'] = "hevc_nvenc";  // = "libx265" // If you're video card does not support HDR;
   $options['video']['hdr']['pix_fmt'] = "yuv420p10le";
   $options['video']['hdr']['params'] = '"colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
 
@@ -181,9 +179,6 @@ if (count($argv) > 1) {
       if ($file['basename'] == $application) {
         unset($file);
       }
-      else {
-        $options['args']['force'] = true;  // use FORCE in Single File Processing mode
-      }
     }
     elseif (preg_match('/^--/', $arg)) {
       $args[] = $arg;
@@ -208,6 +203,8 @@ if (count($argv) > 1) {
 //Single File Processing
   if (!empty($file)) {
     $options = getLocationOptions($options, $args, $file['dirname']);
+    // $options['args']['force'] = true;
+    // print "Single File FORCE MODE";
     processItem($file['dirname'], $file['basename'], $options, $args);
     exit;
   }
@@ -307,11 +304,11 @@ function processItem($dir, $item, $options, $args) {
   if (empty($info)) {
     return;
   }
-  $options = ffanalyze($info, $options, $args, $dir, $file);
 
+  $options = ffanalyze($info, $options, $args, $dir, $file);
   if (empty($options)) {
     return;
-  }
+  }  
 
 // check the file's timestamp (Do not process if file time is too new. Still unpacking?)
   if (filemtime($file['basename']) > time()) {
@@ -325,59 +322,34 @@ function processItem($dir, $item, $options, $args) {
     return;
   }
 
-
 //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
-    if (isset($info['video']['mkvmerge'])) {
-      $mkversion = shell_exec("mkvmerge --version 2>&1");
-      list($mkvm_exec, $mkvm_ver, $mkvm_rel, $mkvm_bit) = explode(' ', $mkversion);
-      list($ikvm_exec, $ikvm_ver, $ikvm_rel, $ikvm_bit) = explode(' ', $info['video']['mkvmerge']);
-      if ($mkvm_ver === $ikvm_ver && !$options['args']['force']) {
-        $options['args']['skip'] = true;
-      }
-    }
-
-    if ($options['args']['filter_foreign'] && !$options['args']['skip']) {
-      if (!empty($info['filters']['language'])) {
-        foreach ($info['filters']['language'] as $li => $lf) {
-          $cmdln = "mkvmerge" .
-            " --default-language '" . $options['args']['language'] . "'" .
-            " --video-tracks '!" . $lf . "'" .
-            " --audio-tracks '!" . $lf . "'" .
-            " --no-attachments" .
-            " --subtitle-tracks '" . $options['args']['language'] . "'" .
-            " --track-tags '" . $options['args']['language'] . "'" .
-            " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
-          print "\n\n\033[01;32m${cmdln}\033[0m\n";
-          system("${cmdln} 2>&1");
-          if (file_exists($file['filename'] . ".mkvm")) {
-            $mtime = filemtime($file['basename']);
-            unlink($file['basename']);
-            rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
-            touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
-          }
-        }
-      }
-      else {
-        $cmdln = "mkvmerge" .
-          " --language 0:" . $options['args']['language'] .
-          " --language 1:" . $options['args']['language'] .
-          " --subtitle-tracks '" . $options['args']['language'] . "'" .
-          " --no-attachments" .
-          " --track-tags '" . $options['args']['language'] . "'" .
-          " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
-        print "\n\n\033[01;32m${cmdln}\033[0m\n";
-        system("${cmdln} 2>&1");
-        if (file_exists($file['filename'] . ".mkvm")) {
-          $mtime = filemtime($file['basename']);
-          unlink($file['basename']);
-          rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
-          touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
+    if (
+        ($options['args']['filter_foreign'] && !empty($options['args']['language']) && !isset($info['video']['mkvmerge'])) ||
+        ($options['args']['force'])
+       ){
+      $cmdln = "mkvmerge" .
+        " --language 0:" . $options['args']['language'] .
+        " --language 1:" . $options['args']['language'] .
+        " --subtitle-tracks '" . $options['args']['language'] . "'" .
+        " --no-attachments" .
+        " --track-tags '" . $options['args']['language'] . "'" .
+        " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
+      print "\n\n\033[01;32m${cmdln}\033[0m\n";
+      system("${cmdln} 2>&1");
+      if (file_exists($file['filename'] . ".mkvm")) {
+        $mtime = filemtime($file['basename']);
+        unlink($file['basename']);
+        rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
+        touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
+        $info = ffprobe($file, $options);
+        $options = ffanalyze($info, $options, $args, $dir, $file);
+        if (empty($options)) {
+          return;
         }
       }
     }
   }
-
 
   if (!isset($options['args']['video'])) {
     $options['args']['video'] = "-vcodec copy";
@@ -468,7 +440,12 @@ function processItem($dir, $item, $options, $args) {
     if (isset($inforig['audio']) && !isset($info['audio'])) {
       $reasons[] = "audio stream is missing";
     }
-    if (((int) $inforig['format']['size']) < ((int) $info['format']['size'])) {
+    if (
+      isset($inforig['format']['size']) &&
+      isset($options['video']['filesize_tollerance']) &&
+      isset($info['format']['size']) &&
+      (int) ($inforig['format']['size'] * $options['video']['filesize_tollerance']) < ((int) $info['format']['size'])
+      ){
       $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 0, false) . ")";
     }
 
@@ -565,7 +542,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $options['video']['vps'] = round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) . "k";
     $options['video']['bps'] = (round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) * 1000);
 
-    if (empty($info['video']['bitrate']) || !isset($info['video']['bitrate'])) {
+    if (!isset($info['video']['bitrate']) || empty($info['video']['bitrate'])) {
       $info['video']['bitrate'] = 0;
     }
 
@@ -583,8 +560,10 @@ function ffanalyze($info, $options, $args, $dir, $file) {
 
   // var_dump($info['video']);
   // var_dump($options['video']);
+  // var_dump($options['args']['video']);
   // exit;
 
+  
     if (!preg_match("/copy/i", $options['args']['video'])) {
       print "\033[01;32mVideo Inspection ->\033[0m" .
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
@@ -622,8 +601,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -qmax " . $options['video']['vmax'] .
         " -pix_fmt " . $options['video']['pix_fmt'] .
         " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] .
-        $fps_option .
-        " -vsync 1";
+        $fps_option;
 
       if (isset($scale_option)) {
         $options['args']['video'] .= " -vf \"" . $scale_option . "\"";
@@ -778,7 +756,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     "creation_date",
     "language",
     "codec_name",
-    "rotate"
+    "rotate",
+    "_statistics_writing_app",
+    "_statistics_writing_date_utc"
   );
   //lowercase metatag names
   $keep_atags = array(
@@ -792,42 +772,43 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     "sample_rate",
     "bit_rate",
     "bps",
+    "_statistics_tags",
+    "_statistics_writing_app",
+    "_statistics_writing_date_utc",
+    "number_of_frames",
+    "number_of_bytes"
   );
 
   if (!empty($info['vtags'])) {
     foreach ($info['vtags'] as $vtag => $vval) {
-      if (!array_key_exists(strtolower($vtag), $keep_vtags)) {
-        // Set the existing value to nothing
-        $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=";
+      $lvtag = strtolower($vtag);
+      if (in_array($lvtag, $keep_vtags)) {
+        $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=${vval}";
       }
       else {
-        $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=${vval}";
+        // Set the existing value to nothing
+        $options['args']['meta'] .= " -metadata:s:v:0 ${vtag}=";
       }
     }
   }
   if (!empty($info['atags'])) {
     foreach ($info['atags'] as $atag => $aval) {
-      if ((!array_key_exists(strtolower($atag), $keep_atags))) {
+      $latag = strtolower($atag);
+      if ((in_array($latag, $keep_atags))) {
+        $options['args']['meta'] .= " -metadata:s:a:0 ${atag}=${aval}";
+      }
+      else {
         // Set the existing value to nothing
         $options['args']['meta'] .= " -metadata:s:a:0 ${atag}=";
       }
-      else {
-        $options['args']['meta'] .= " -metadata:s:a:0 ${atag}=${aval}";
-      }
     }
   }
-
   if (
-    (preg_match("/copy/i", $options['args']['video'])) &&
-    (preg_match("/copy/i", $options['args']['audio'])) &&
-    ('.' . $file['extension'] == $options['extension'])
-  ) {
-    $options = array();
-  }
-
-//safetynet
-  if (empty($options['video'])) {
-    $options = array();
+       (preg_match("/copy/i", $options['args']['video'])) &&
+       (preg_match("/copy/i", $options['args']['audio'])) &&
+       ('.' . $file['extension'] == $options['extension'])
+     ) {
+      return(array());  //No re-encoding needed
   }
 
   return($options);
@@ -872,7 +853,7 @@ function ffprobe($file, $options) {
   $info['format']['format_name'] = getXmlAttribute($xml->format, "format_name");
   $info['format']['duration'] = getXmlAttribute($xml->format, "duration");
   $info['format']['size'] = getXmlAttribute($xml->format, "size");
-  $info['format']['bitrate'] = getXmlAttribute($xml->format, "bit_rate");
+  $info['format']['bitrate'] = getXmlAttribute($xml->format, "bit_rate") ?: getXmlAttribute($xml->format, "BPS");
   $info['format']['nb_streams'] = getXmlAttribute($xml->format, "nb_streams");
   $info['format']['probe_score'] = getXmlAttribute($xml->format, "probe_score");
   $info['format']['exclude'] = getXmlAttribute($xml->format, "exclude");
@@ -901,7 +882,7 @@ function ffprobe($file, $options) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $vtags[$tag_key] = $tag_val;
-              //print "\n" . $tag_key . " : " . $tag_val . "\n";
+//              print "\n" . $tag_key . " : " . $tag_val . "\n";
               if (preg_match('/mkvmerge/', $tag_val)) {
                 $info['video']['mkvmerge'] = $tag_val;
               }
