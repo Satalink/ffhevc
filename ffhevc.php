@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20221211.1403;
+$VERSION = 20221214.0629;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -11,8 +11,8 @@ $cleaned = array();
 $args = array();
 
 //Only run one instance of this script.
-exec("pgrep ffmpeg", $ffmpid);
-exec("pgrep mkvmerge", $mkvmpid);
+exec("ps -efW|grep -v grep|grep ffmpeg", $ffmpid);
+exec("ps -efW|grep -v grep|grep mkvmerge", $mkvmpid);
 if (!empty($ffmpid)) {
   exit("FFMPEG already running on another process: $ffmpid[0]\n");
 }
@@ -131,6 +131,8 @@ function getDefaultOptions($args) {
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['timelock'] = false;  //Track if file has a timestamp that is in the future
   $options['args']['threads'] = 0;
+  $options['stats']['processed'] = 0;
+  $options['stats']['re-encoded'] = 0;  
   $options['args']['maxmuxqueuesize'] = 4096;
   $options['args']['pix_fmts'] = array(//acceptable pix_fmts
     "yuv420p",
@@ -203,8 +205,6 @@ if (count($argv) > 1) {
 //Single File Processing
   if (!empty($file)) {
     $options = getLocationOptions($options, $args, $file['dirname']);
-    // $options['args']['force'] = true;
-    // print "Single File FORCE MODE";
     processItem($file['dirname'], $file['basename'], $options, $args);
     exit;
   }
@@ -257,6 +257,7 @@ function processRecursive($dir, $options, $args) {
       unlink("$stop");
       exit("STOP FILE DETECTED: $stop");
     }
+   
     if (!$options['args']['followlinks'] && is_link($dir . DIRECTORY_SEPARATOR . $item )) {
       //print "SKIPPED SYMLINK: ${dir}" . DIRECTORY_SEPARATOR . "${item}\n";
       continue;  //skip symbolic links
@@ -271,13 +272,16 @@ function processRecursive($dir, $options, $args) {
       processItem($dir, $item, $options, $args);
     }
   }
+  if ($options['stats']['processed']) {
+    print "Processed:  " . $options['stats']['processed'] ."  \n";
+    print "Re-Encoded: " . $options['stats']['re-encoded'] . "\n";
+  }
 }
 
 function processItem($dir, $item, $options, $args) {
   $extensions = getExtensions();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
   $file = titlecase_filename($file, $options);
-
   if (
     !isset($file['extension']) ||
     !in_array(strtolower($file['extension']), $extensions)
@@ -292,6 +296,8 @@ function processItem($dir, $item, $options, $args) {
     setXmlAttributeExclude($file);
     return;
   }
+
+  $options['stats']['processed']++;
 
   $curdir = getcwd();
   chdir($file['dirname']);
@@ -331,6 +337,7 @@ function processItem($dir, $item, $options, $args) {
       $cmdln = "mkvmerge" .
         " --language 0:" . $options['args']['language'] .
         " --language 1:" . $options['args']['language'] .
+        " --audio-tracks 1" .
         " --subtitle-tracks '" . $options['args']['language'] . "'" .
         " --no-attachments" .
         " --track-tags '" . $options['args']['language'] . "'" .
@@ -465,6 +472,7 @@ function processItem($dir, $item, $options, $args) {
           titlecase_filename($file, $options);
         }
       }
+      $options['stats']['re-encode']++;
     }
     else {
       print "Rollback: " . $file['basename'] . " : ";
@@ -515,9 +523,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     return($options);
   }
 
-  if (isset($info['format']['exclude']) && $info['format']['exclude'] == "1" && !$options['args']['force']) {
+  if (isset($info['format']['exclude']) && $info['format']['exclude'] == "1" && !$options['args']['override']) {
     if ($options['args']['verbose']) {
-      print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --force option to override.\n";
+      print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --override option to override.\n";
     }
     $options = array();
     return($options);
@@ -565,9 +573,10 @@ function ffanalyze($info, $options, $args, $dir, $file) {
 
   
     if (!preg_match("/copy/i", $options['args']['video'])) {
+      $pf_key = array_search($info['video']['pix_fmt'], $options['args']['pix_fmts']);
       print "\033[01;32mVideo Inspection ->\033[0m" .
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
-        $info['video']['pix_fmt'] . "~=" . $options['video']['pix_fmt'] . "," .
+        $info['video']['pix_fmt'] . "~=" . $options['args']['pix_fmts'][$pf_key] . "," .
         $info['video']['height'] . "<=" . $options['video']['scale'] . "," .
         $info['video']['bitrate'] . "<=" . ( $options['video']['bps'] * $options['video']['quality_factor']) . "," . // give some tollerance
         $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
