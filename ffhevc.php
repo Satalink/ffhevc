@@ -9,7 +9,11 @@ $application = end($self);
 $dirs = array();
 $cleaned = array();
 $args = array();
-
+$stats = array(
+ 'processed' => 0,
+ 'reEncoded' => 0,
+ 'byteSaved' => 0
+);
 //Only run one instance of this script.
 exec("ps -efW|grep -v grep|grep ffmpeg", $ffmpid);
 exec("ps -efW|grep -v grep|grep mkvmerge", $mkvmpid);
@@ -131,8 +135,6 @@ function getDefaultOptions($args) {
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['timelock'] = false;  //Track if file has a timestamp that is in the future
   $options['args']['threads'] = 0;
-  $options['stats']['processed'] = 0;
-  $options['stats']['re-encoded'] = 0;  
   $options['args']['maxmuxqueuesize'] = 4096;
   $options['args']['pix_fmts'] = array(//acceptable pix_fmts
     "yuv420p",
@@ -244,6 +246,11 @@ else {
 /* ----------MAIN------------------ */
 foreach ($dirs as $key => $dir) {
   processRecursive($dir, $options, $args);
+  print "Scanned Videos: " . $stats['processed'] . "\n";
+  if ($stats['reEncoded']) {
+    print "Re-Encoded    : " . $stats['reEncoded'] . "\n";
+    print "Space Saved   : " . formatBytes($stats['byteSaved'], 0, true). "\n";
+  }
 }
 
 /* ## ## ## STATIC FUNCTIONS ## ## ## */
@@ -272,13 +279,10 @@ function processRecursive($dir, $options, $args) {
       processItem($dir, $item, $options, $args);
     }
   }
-  if ($options['stats']['processed']) {
-    print "Processed:  " . $options['stats']['processed'] ."  \n";
-    print "Re-Encoded: " . $options['stats']['re-encoded'] . "\n";
-  }
 }
 
 function processItem($dir, $item, $options, $args) {
+  global $stats;
   $extensions = getExtensions();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
   $file = titlecase_filename($file, $options);
@@ -297,7 +301,7 @@ function processItem($dir, $item, $options, $args) {
     return;
   }
 
-  $options['stats']['processed']++;
+  $stats['processed']++;
 
   $curdir = getcwd();
   chdir($file['dirname']);
@@ -461,6 +465,8 @@ function processItem($dir, $item, $options, $args) {
         formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 2, true) . 
         " [orig] - " . formatBytes($info['format']['size'], 2, true) . 
         " [new] = \033[01;32m" . formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
+      $stats['byteSaved'] = (filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']));
+      $stats['reEncode']++;
       unlink($fileorig['filename'] . ".orig." . $fileorig['extension']);
       if (file_exists($file['filename'] . $options['extension'])) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
@@ -472,7 +478,6 @@ function processItem($dir, $item, $options, $args) {
           titlecase_filename($file, $options);
         }
       }
-      $options['stats']['re-encode']++;
     }
     else {
       print "Rollback: " . $file['basename'] . " : ";
