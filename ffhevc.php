@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20221214.0629;
+$VERSION = 20230130.0929;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -104,8 +104,10 @@ function getDefaultOptions($args) {
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
   $options['video']['hdr']['codec'] = "hevc_nvenc";  // = "libx265" // If you're video card does not support HDR;
-  $options['video']['hdr']['pix_fmt'] = "yuv420p10le";
-  $options['video']['hdr']['params'] = '"colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
+  $options['video']['hdr']['bt709']['pix_fmt'] = "yuv420p10le";
+  $options['video']['hdr']['bt2020']['params'] = '"colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
+  $options['video']['hdr']['bt709']['pix_fmt'] = "p010le";
+  $options['video']['hdr']['bt709']['params'] = '"colorprim=bt709:transfer=bt709"';
 
   $options['audio']['codecs'] = array("aac", "ac3", "ac-3", "eac3",);   //("aac", "ac3", "libopus", "mp3") allow these c  $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
   $options['audio']['codec'] = "eac3";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
@@ -207,7 +209,7 @@ if (count($argv) > 1) {
 //Single File Processing
   if (!empty($file)) {
     $options = getLocationOptions($options, $args, $file['dirname']);
-    processItem($file['dirname'], $file['basename'], $options, $args);
+    processItem($file['dirname'], $file['basename'], $options, $args, $stats);
     exit;
   }
 
@@ -245,7 +247,7 @@ else {
 
 /* ----------MAIN------------------ */
 foreach ($dirs as $key => $dir) {
-  processRecursive($dir, $options, $args);
+  processRecursive($dir, $options, $args, $stats);
   print "Scanned Videos: " . $stats['processed'] . "\n";
   if ($stats['reEncoded']) {
     print "Re-Encoded    : " . $stats['reEncoded'] . "\n";
@@ -255,7 +257,8 @@ foreach ($dirs as $key => $dir) {
 
 /* ## ## ## STATIC FUNCTIONS ## ## ## */
 
-function processRecursive($dir, $options, $args) {
+function processRecursive($dir, $options, $args, $stats) {
+  global $stats;
   $result = array();
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
@@ -272,16 +275,16 @@ function processRecursive($dir, $options, $args) {
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
       if (!preg_match("/_UNPACK_/", $item)) {
         cleanXMLDir($dir, $options);
-        $result["$dir" . DIRECTORY_SEPARATOR . "$item"] = processRecursive($dir . DIRECTORY_SEPARATOR . $item, $options, $args);
+        $result["$dir" . DIRECTORY_SEPARATOR . "$item"] = processRecursive($dir . DIRECTORY_SEPARATOR . $item, $options, $args, $stats);
       }
     }
     else {
-      processItem($dir, $item, $options, $args);
+      processItem($dir, $item, $options, $args, $stats);
     }
   }
 }
 
-function processItem($dir, $item, $options, $args) {
+function processItem($dir, $item, $options, $args, $stats) {
   global $stats;
   $extensions = getExtensions();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
@@ -378,15 +381,17 @@ function processItem($dir, $item, $options, $args) {
   }  
 
   if ($info['video']['hdr']) {
+    $hdr_group=$info['video']['hdr'];
     $options['args']['video'] .=
-      " -x265-params " . $options['video']['hdr']['params'] .
-      " -pix_fmt " . $options['video']['hdr']['pix_fmt'] .
+      " -x265-params " . $options['video']['hdr'][$hdr_group]['params'] .
+      " -pix_fmt " . $options['video']['hdr'][$hdr_group]['pix_fmt'] .
       " -vb " . $options['video']['vps'] .
       " -qmin " . $options['video']['vmin'] .
       " -qmax " . $options['video']['vmax'] .
-      " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] . 
       $fps_option;
-
+    $options['args']['meta'] = 
+      " -metadata:s:v:0 bit_rate=" . $options['video']['vps'] .
+      " -metadata:s:v:0 bps=" . $options['video']['bps'];
     $options['args']['exclude'] = true;
   }
   if ($options['args']['test']) {
@@ -591,6 +596,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         //hard set info to be used for bitrate calculation based on scaled resolution
         $info['video']['width'] = (($info['video']['width'] * $options['video']['scale']) / $info['video']['height']);
         $info['video']['height'] = $options['video']['scale'];
+        $info['video']['bitrate'] = $options['video']['vps'];
         $scale_option = "scale=-1:" . $options['video']['scale'];
         //Recalculate target video bitrate based on projected output scale
         $options['video']['vps'] = round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) . "k";
@@ -891,7 +897,8 @@ function ffprobe($file, $options) {
             $info['video']['ratio'] = getXmlAttribute($stream, "display_aspect_ratio");
             $info['video']['avg_frame_rate'] = getXmlAttribute($stream, "avg_frame_rate");
             $info['video']['fps'] = round(( explode("/", $info['video']['avg_frame_rate'])[0] / explode("/", $info['video']['avg_frame_rate'])[1]), 2);
-            $info['video']['hdr'] = preg_match('/bt2020/', getXmlAttribute($stream, "color_space")) ? true : false;
+            $info['video']['hdr'] = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_space")) ? getXmlAttribute($stream, "color_space") : false;
+            
             foreach ($stream->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
@@ -1008,8 +1015,8 @@ function ffprobe($file, $options) {
       $del = rtrim(fgets(STDIN));
     }
     if (!preg_match('/n/i', $del)) {
-      unlink($file['basename']);
-      print $file['basename'] . " DELETED";
+//      unlink($file['basename']);
+      print $file['basename'] . " NO Video or Audio";
       $info = array();
     }
   }
