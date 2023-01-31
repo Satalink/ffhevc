@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20230131.1617;
+$VERSION = 20230131.1800;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -104,7 +104,10 @@ function getDefaultOptions($args) {
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
   $options['video']['hdr']['codec'] = "hevc_nvenc";  // = "libx265" // If you're video card does not support HDR;
-  $options['video']['hdr']['pix_fmt'] = "p010le";
+  $options['video']['hdr']['pix_fmt'] = array("yuv420p","yuv420p10le","p010le");
+  $options['video']['hdr']['color_primary'] = array("bt601|","bt709","bt2020");
+  $options['video']['hdr']['color_transfer'] = array("bt601","bt709","smpte2084");
+  $options['video']['hdr']['color_space'] = array("bt601","bt709","bt2020nc");
   $options['audio']['codecs'] = array("aac", "ac3", "ac-3", "eac3",);   //("aac", "ac3", "libopus", "mp3") allow these c  $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
   $options['audio']['codec'] = "eac3";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
   $options['audio']['channels'] = 6;
@@ -139,7 +142,6 @@ function getDefaultOptions($args) {
     "yuv420p10le",
     "p010le"
   );
-
   $options['args']['cmdlnopts'] = array(
     "help",
     "yes",
@@ -384,12 +386,24 @@ function processItem($dir, $item, $options, $args, $stats) {
   }  
 
   if ($info['video']['hdr']) {
+    $resolution = isset($options['video']['scale']) ? (int)$options['video']['scale'] : (int)$info['video']['height'];
+    switch (true) {
+      case $resolution <= 480:
+        $ridx = 0;
+        break;
+      case $resolution <= 1080:
+        $ridx = 1;
+        break;
+      default:
+        $ridx = 2;
+        break;        
+     }
     $options['args']['video'] .=
       " -x265-params " . 
-          "colorprim=" . $info['video']['color_primaries'] .
-          ":transfer=" . $info['video']['color_transfer'] .
-          ":colormatrix=" . $info['video']['color_space'] .
-      " -pix_fmt " . $options['video']['hdr']['pix_fmt'] .
+          "colorprim=" . $options['video']['hdr']['color_primary'][$ridx] .
+          ":transfer=" . $options['video']['hdr']['color_transfer'][$ridx] .
+          ":colormatrix=" . $options['video']['hdr']['color_space'][$ridx] .
+      " -pix_fmt " . $options['video']['hdr']['pix_fmt'][$ridx] .
       " -vb " . $options['video']['vps'] .
       " -qmin " . $options['video']['vmin'] .
       " -qmax " . $options['video']['vmax'] .
@@ -398,7 +412,7 @@ function processItem($dir, $item, $options, $args, $stats) {
       " -metadata:s:v:0 bit_rate=" . $options['video']['vps'] .
       " -metadata:s:v:0 bps=" . $options['video']['bps'];
   } else {
-    $options['args']['video'] .= "-pix_fmt " . $options['video']['pix_fmt'];
+    $options['args']['video'] .= " -pix_fmt " . $info['video']['pix_fmt'];
   }
   if ($options['args']['test']) {
     $options['args']['meta'] = '';
