@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20230130.0929;
+$VERSION = 20230131.1617;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -104,11 +104,7 @@ function getDefaultOptions($args) {
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
   $options['video']['hdr']['codec'] = "hevc_nvenc";  // = "libx265" // If you're video card does not support HDR;
-  $options['video']['hdr']['bt709']['pix_fmt'] = "yuv420p10le";
-  $options['video']['hdr']['bt2020']['params'] = '"colorprim=bt2020:transfer=smpte2084:colormatrix=bt2020nc"';
-  $options['video']['hdr']['bt709']['pix_fmt'] = "p010le";
-  $options['video']['hdr']['bt709']['params'] = '"colorprim=bt709:transfer=bt709"';
-
+  $options['video']['hdr']['pix_fmt'] = "p010le";
   $options['audio']['codecs'] = array("aac", "ac3", "ac-3", "eac3",);   //("aac", "ac3", "libopus", "mp3") allow these c  $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
   $options['audio']['codec'] = "eac3";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
   $options['audio']['channels'] = 6;
@@ -131,7 +127,7 @@ function getDefaultOptions($args) {
   $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['language'] = "eng";  // Default language track
-  $options['args']['filter_foreign'] = true; // filters all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
+  $options['args']['filter_foreign'] = true; // filters out all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
   $options['args']['delay'] = 30; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
@@ -303,7 +299,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     setXmlAttributeExclude($file);
     return;
   }
-
+    
   $stats['processed']++;
 
   $curdir = getcwd();
@@ -323,6 +319,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     return;
   }  
 
+
 // check the file's timestamp (Do not process if file time is too new. Still unpacking?)
   if (filemtime($file['basename']) > time()) {
     touch($file['basename'], time()); //file time is in the future (created overseas?), set it to current time.
@@ -335,31 +332,37 @@ function processItem($dir, $item, $options, $args, $stats) {
     return;
   }
 
+
 //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
-    if (
-        ($options['args']['filter_foreign'] && !empty($options['args']['language']) && !isset($info['video']['mkvmerge'])) ||
-        ($options['args']['force'])
-       ){
-      $cmdln = "mkvmerge" .
-        " --language 0:" . $options['args']['language'] .
-        " --language 1:" . $options['args']['language'] .
-        " --audio-tracks 1" .
-        " --subtitle-tracks '" . $options['args']['language'] . "'" .
-        " --no-attachments" .
-        " --track-tags '" . $options['args']['language'] . "'" .
-        " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
-      print "\n\n\033[01;32m${cmdln}\033[0m\n";
-      system("${cmdln} 2>&1");
-      if (file_exists($file['filename'] . ".mkvm")) {
-        $mtime = filemtime($file['basename']);
-        unlink($file['basename']);
-        rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
-        touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
-        $info = ffprobe($file, $options);
-        $options = ffanalyze($info, $options, $args, $dir, $file);
-        if (empty($options)) {
-          return;
+    if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
+       if ( !isset($info['video']['mkvmerge'])  ||
+           ( $info['video']['tracks'] > 1 ||
+             $info['audio']['tracks'] > 1     || 
+             $info['subtitle']['tracks'] > 1
+           ) ||
+           $options['args']['force']
+       ) {
+          $cmdln = "mkvmerge" .
+          " --language 0:" . $options['args']['language'] .
+          " --language 1:" . $options['args']['language'] .
+          " --audio-tracks 1" .
+          " --subtitle-tracks '" . $options['args']['language'] . "'" .
+          " --no-attachments" .
+          " --track-tags '" . $options['args']['language'] . "'" .
+          " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
+        print "\n\n\033[01;32m${cmdln}\033[0m\n";
+        system("${cmdln} 2>&1");
+        if (file_exists($file['filename'] . ".mkvm")) {
+          $mtime = filemtime($file['basename']);
+          unlink($file['basename']);
+          rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
+          touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
+          $info = ffprobe($file, $options);
+          $options = ffanalyze($info, $options, $args, $dir, $file);
+          if (empty($options)) {
+            return;
+          }
         }
       }
     }
@@ -381,10 +384,12 @@ function processItem($dir, $item, $options, $args, $stats) {
   }  
 
   if ($info['video']['hdr']) {
-    $hdr_group=$info['video']['hdr'];
     $options['args']['video'] .=
-      " -x265-params " . $options['video']['hdr'][$hdr_group]['params'] .
-      " -pix_fmt " . $options['video']['hdr'][$hdr_group]['pix_fmt'] .
+      " -x265-params " . 
+          "colorprim=" . $info['video']['color_primaries'] .
+          ":transfer=" . $info['video']['color_transfer'] .
+          ":colormatrix=" . $info['video']['color_space'] .
+      " -pix_fmt " . $options['video']['hdr']['pix_fmt'] .
       " -vb " . $options['video']['vps'] .
       " -qmin " . $options['video']['vmin'] .
       " -qmax " . $options['video']['vmax'] .
@@ -392,7 +397,8 @@ function processItem($dir, $item, $options, $args, $stats) {
     $options['args']['meta'] = 
       " -metadata:s:v:0 bit_rate=" . $options['video']['vps'] .
       " -metadata:s:v:0 bps=" . $options['video']['bps'];
-    $options['args']['exclude'] = true;
+  } else {
+    $options['args']['video'] .= "-pix_fmt " . $options['video']['pix_fmt'];
   }
   if ($options['args']['test']) {
     $options['args']['meta'] = '';
@@ -532,7 +538,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $options = array();
     return($options);
   }
-
   if (isset($info['format']['exclude']) && $info['format']['exclude'] == "1" && !$options['args']['override']) {
     if ($options['args']['verbose']) {
       print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --override option to override.\n";
@@ -619,7 +624,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -vb " . $options['video']['vps'] .
         " -qmin " . $options['video']['vmin'] .
         " -qmax " . $options['video']['vmax'] .
-        " -pix_fmt " . $options['video']['pix_fmt'] .
         " -max_muxing_queue_size " . $options['args']['maxmuxqueuesize'] .
         $fps_option;
 
@@ -656,7 +660,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $options['args']['map'] .= "-map 0:v? ";
   }
 
-//Audio
+  //Audio
   if ($options['audio']['bitrate'] == 0 || stripos($info['audio']['title'], "comment")) {
     $info['audio'] = null;
   }
@@ -762,11 +766,11 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     }
   }
 
-//Subtexts
+  //Subtexts
   $options['args']['subs'] = "-scodec copy";
   $options['args']['map'] .= "-map 0:s? ";
 
-//Clear Old Tags
+  //Clear Old Tags
   //lowercase metadata names
   $keep_vtags = array(
     "bps",
@@ -830,7 +834,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
      ) {
       return(array());  //No re-encoding needed
   }
-
   return($options);
 }
 
@@ -887,6 +890,8 @@ function ffprobe($file, $options) {
         case "video":
           if (empty($info['video'])) {
             $vtags = array();
+            if(!empty($info['video']['tracks'])) {}
+            $info['video']['tracks'] = 1;
             $info['video']['index'] = getXmlAttribute($stream, "index");
             $info['video']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['video']['codec'] = getXmlAttribute($stream, "codec_name");
@@ -897,8 +902,11 @@ function ffprobe($file, $options) {
             $info['video']['ratio'] = getXmlAttribute($stream, "display_aspect_ratio");
             $info['video']['avg_frame_rate'] = getXmlAttribute($stream, "avg_frame_rate");
             $info['video']['fps'] = round(( explode("/", $info['video']['avg_frame_rate'])[0] / explode("/", $info['video']['avg_frame_rate'])[1]), 2);
-            $info['video']['hdr'] = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_space")) ? getXmlAttribute($stream, "color_space") : false;
-            
+            $info['video']['color_range'] = getXmlAttribute($stream, "color_range");
+            $info['video']['color_space'] = getXmlAttribute($stream, "color_space");
+            $info['video']['color_transfer'] = getXmlAttribute($stream, "color_transfer");
+            $info['video']['color_primaries'] = getXmlAttribute($stream, "color_primaries");
+            $info['video']['hdr'] = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_primaries")) ? getXmlAttribute($stream, "color_primaries") : false;
             foreach ($stream->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
@@ -921,11 +929,14 @@ function ffprobe($file, $options) {
               $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
             }
             $info['vtags'] = $vtags;
+          } else {
+            $info['video']['tracks']++;
           }
           break;
         case "audio":
           if (empty($info['audio'])) {
             $atags = array();
+            $info['audio']['tracks'] = 1;
             $info['audio']['index'] = getXmlAttribute($stream, "index");
             $info['audio']['title'] = getXmlAttribute($stream, "title");
             $info['audio']['codec_type'] = getXmlAttribute($stream, "codec_type");
@@ -969,12 +980,19 @@ function ffprobe($file, $options) {
               $atags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
             }
             $info['atags'] = $atags;
+          } else {
+            $info['audio']['tracks']++;
           }
           break;
         case "subtitle":
-          $info['subtitle']['index'] = getXmlAttribute($stream, "index");
-          $info['subtitle']['codec_type'] = getXmlAttribute($stream, "codec_type");
-          $info['subtitle']['codec'] = getXmlAttribute($stream, "codec_name");
+          if (empty($info['subtitle'])) {
+            $info['subtitle']['tracks'] = 1;
+            $info['subtitle']['index'] = getXmlAttribute($stream, "index");
+            $info['subtitle']['codec_type'] = getXmlAttribute($stream, "codec_type");
+            $info['subtitle']['codec'] = getXmlAttribute($stream, "codec_name");
+          } else {
+            $info['subtitle']['tracks']++;
+          }
           break;
       }
     }
