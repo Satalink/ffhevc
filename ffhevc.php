@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20230131.1800;
+$VERSION = 20230203.0411;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -104,7 +104,7 @@ function getDefaultOptions($args) {
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
   $options['video']['hdr']['codec'] = "hevc_nvenc";  // = "libx265" // If you're video card does not support HDR;
-  $options['video']['hdr']['pix_fmt'] = array("yuv420p","yuv420p10le","p010le");
+  $options['video']['hdr']['pix_fmt'] = array("p010le","p010le","p010le");
   $options['video']['hdr']['color_primary'] = array("bt601|","bt709","bt2020");
   $options['video']['hdr']['color_transfer'] = array("bt601","bt709","smpte2084");
   $options['video']['hdr']['color_space'] = array("bt601","bt709","bt2020nc");
@@ -1048,7 +1048,7 @@ function ffprobe($file, $options) {
     }
     if (!preg_match('/n/i', $del)) {
 //      unlink($file['basename']);
-      print $file['basename'] . " NO Video or Audio";
+      print $file['basename'] . " NO Video or Audio\n";
       $info = array();
     }
   }
