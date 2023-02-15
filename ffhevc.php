@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20230203.0411;
+$VERSION = 20230215.0641;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -373,8 +373,11 @@ function processItem($dir, $item, $options, $args, $stats) {
   if (!isset($options['args']['video'])) {
     $options['args']['video'] = "-vcodec copy";
   }
+
   if (preg_match('/p10/', $options['video']['pix_fmt'])) {
     $options['profile'] = "main10";
+  } else {
+    $options['profile'] = "main";
   }
 
   if ($info['video']['fps'] > $options['video']['fps']) {
