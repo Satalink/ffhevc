@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231124.1913;
+$VERSION = 20231125.1732;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -247,9 +247,13 @@ else {
 /* ----------MAIN------------------ */
 foreach ($dirs as $key => $dir) {
   processRecursive($dir, $options, $args, $stats);
-  print "Scanned Videos: " . $stats['processed'] . "\n";
+  if ($stats['processed']) {
+    print "Scanned Videos: " . $stats['processed'] . "\n";
+  }
   if ($stats['reEncoded']) {
     print "Re-Encoded    : " . $stats['reEncoded'] . "\n";
+  }
+  if ($stats['byteSaved']) {
     print "Space Saved   : " . formatBytes($stats['byteSaved'], 0, true). "\n";
   }
 }
@@ -302,9 +306,9 @@ function processItem($dir, $item, $options, $args, $stats) {
     setXmlAttributeExclude($file);
     return;
   }
-    
-  $stats['processed']++;
-
+  if (isset($stats['processed'])) {  
+    $stats['processed']++;
+  }
   $curdir = getcwd();
   chdir($file['dirname']);
 
@@ -444,32 +448,42 @@ function processItem($dir, $item, $options, $args, $stats) {
     exit;
   }
   exec("${cmdln}", $output, $status);
-  if($status) {
+  if($status === 255) {
     //status(255) => CTRL-C    
-    echo "status: >${status}<";    
     exit;
+  } else if ($status === 127) {
+    //corrupt file, encoding crashed
+    unlink($file['basename']);
   }
 
 #Swap Validate
   if ($options['args']['keepowner']) {
-    $options['owner'] = fileowner($file['basename']);
+    if (file_exists($file['basename'])) {
+      $options['owner'] = fileowner($file['basename']);
+    }
   }
-  rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
-  $fileorig = $file;
+  if (file_exists($file['basename'])) {
+    rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
+    $fileorig = $file;
+  }
   if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
     unlink("./.xml/" . $file['filename'] . ".xml");
   }
-  rename($file['filename'] . ".hevc", $file['filename'] . $options['extension']);
+  if (file_exists($file['filename'] . ".hevc")) {
+    rename($file['filename'] . ".hevc", $file['filename'] . $options['extension']);
+  }
   $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
-  set_fileattr($file, $options);
-  $inforig = $info;
-  $info = ffprobe($file, $options);
+  if (file_exists($file['basename'])) {
+    set_fileattr($file, $options);
+    $inforig = $info;
+    $info = ffprobe($file, $options);
+  }
   if (empty($info)) {
     return;
   }
 
 #Validate
-  if (!$options['args']['keeporiginal']) {
+  if (!$options['args']['keeporiginal'] && isset($fileorig)) {
     $mtime = filemtime($fileorig['filename'] . ".orig." . $fileorig['extension']);
 
     $reasons = array();
@@ -492,12 +506,15 @@ function processItem($dir, $item, $options, $args, $stats) {
     }
 
     if (empty($reasons) || ($options['args']['force'])) {
+      echo "\n========================================================\n";
       echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . 
         formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 2, true) . 
         " [orig] - " . formatBytes($info['format']['size'], 2, true) . 
         " [new] = \033[01;32m" . formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
-      $stats['byteSaved'] = (filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']));
-      $stats['reEncode']++;
+      if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
+        $stats['byteSaved'] += (filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']));
+        $stats['reEncoded']++;
+      }
       unlink($fileorig['filename'] . ".orig." . $fileorig['extension']);
       if (file_exists($file['filename'] . $options['extension'])) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
@@ -1051,8 +1068,13 @@ function ffprobe($file, $options) {
       print "Delete " . $file['basename'] . "?  [Y/n] >";
       $del = rtrim(fgets(STDIN));
     }
-    if (!preg_match('/n/i', $del)) {
-      unlink($file['basename']);
+    if (!preg_match('/n/i', $del) && !$options['args']['exclude']) {
+      if (file_exists($file['basename'])) {
+        unlink($file['basename']);
+      }
+      if (file_exists(".xml/" . $file['filename'] . ".xml")) {
+        unlink("./.xml/" . $file['filename'] . ".xml");
+      }
       print $file['basename'] . " NO Video or Audio\n";
       $info = array();
     }
@@ -1065,6 +1087,7 @@ function ffprobe($file, $options) {
       $info = array();
     }
   }
+//  var_dump($info);exit;
   return($info);
 }
 
@@ -1338,8 +1361,10 @@ function titlecase_filename($file, $options) {
 
 function set_fileattr($file, $options) {
   if (($options['args']['keepowner'] || isset($options['owner']) ) && !$options['args']['timelock']) {
-    chown($file['basename'], $options['owner']);
-    chgrp($file['basename'], $options['group']);
-    chmod($file['basename'], $options['args']['permissions']);
+    if (file_exists($file['basename'])) {
+      chown($file['basename'], $options['owner']);
+      chgrp($file['basename'], $options['group']);
+      chmod($file['basename'], $options['args']['permissions']);
+    }
   }
 }
