@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20230215.0641;
+$VERSION = 20231124.1913;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -103,7 +103,8 @@ function getDefaultOptions($args) {
   $options['video']['brightness'] = 0;
   $options['video']['saturation'] = 1;
   $options['video']['gamma'] = 1;
-  $options['video']['hdr']['codec'] = "hevc_nvenc";  // = "libx265" // If you're video card does not support HDR;
+  $options['video']['hdr']['color_range'] = array("tv"); // "tv", "pc"
+  $options['video']['hdr']['codec'] = "hevc_nvenc";  // = "libx265" If you're video card does not support HDR;
   $options['video']['hdr']['pix_fmt'] = array("p010le","p010le","p010le");
   $options['video']['hdr']['color_primary'] = array("bt601|","bt709","bt2020");
   $options['video']['hdr']['color_transfer'] = array("bt601","bt709","smpte2084");
@@ -348,7 +349,9 @@ function processItem($dir, $item, $options, $args, $stats) {
           $cmdln = "mkvmerge" .
           " --language 0:" . $options['args']['language'] .
           " --language 1:" . $options['args']['language'] .
-          " --audio-tracks 1" .
+          " --video-tracks " . $info['video']['index'] .
+          " --audio-tracks " . $info['audio']['index'] .
+          " --track-order " . "0:".$info['video']['index'].","."1:".$info['audio']['index'] .
           " --subtitle-tracks '" . $options['args']['language'] . "'" .
           " --no-attachments" .
           " --track-tags '" . $options['args']['language'] . "'" .
@@ -582,7 +585,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $options['video']['vps'] = round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) . "k";
     $options['video']['bps'] = (round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) * 1000);
 
-    if (!isset($info['video']['bitrate']) || empty($info['video']['bitrate'])) {
+    if (!isset($info['video']['bitrate'])) {
       $info['video']['bitrate'] = 0;
     }
 
@@ -591,7 +594,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       preg_match(strtolower("/$codec_name/"), $info['video']['codec']) &&
       (in_array($info['video']['pix_fmt'], $options['args']['pix_fmts'])) &&
       ($info['video']['height'] <= $options['video']['scale']) &&
-      ($info['video']['bitrate'] > 0) &&
       ($info['video']['bitrate'] <= ($options['video']['bps'] * $options['video']['quality_factor'])) &&
       (!$options['args']['override'])
     ) {
@@ -1050,8 +1052,16 @@ function ffprobe($file, $options) {
       $del = rtrim(fgets(STDIN));
     }
     if (!preg_match('/n/i', $del)) {
-//      unlink($file['basename']);
+      unlink($file['basename']);
       print $file['basename'] . " NO Video or Audio\n";
+      $info = array();
+    }
+    // Check if color_range is in options
+    if (
+      !empty($info['video']['color_range']) && 
+      in_array($info['video']['color_range'],$options['video']['hdr']['color_range'])
+    ) {
+      print "Incompatible color_range detected: " . $file['filename'] . "\n";
       $info = array();
     }
   }
