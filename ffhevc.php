@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231125.1732;
+$VERSION = 20231126.1417;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -77,7 +77,7 @@ function getDefaultOptions($args) {
   $opt['H264'] = array("main", "matroska", ".mkv", "libx264", "yuv420p", "avc");
   $opt['H264-nvenc'] = array("main", "matroska", ".mkv", "h264_nvenc", "yuv420p", "avc");
   $opt['H265'] = array("main10", "matroska", ".mkv", "libx265", "yuv420p10le", "hevc");
-  $opt['hevc-nvenc-mkv'] = array("main10", "matroska", ".mkv", "hevc_nvenc", "p010le", "hevc");
+  $opt['hevc-nvenc-mkv'] = array("main10", "matroska", ".mkv", "hevc_nvenc", "yuv420p10le", "hevc");
   $opt['hevc-nvenc-mp4'] = array("main10", "mp4", ".mp4", "hevc_nvenc", "p010le", "hevc");
 
 //---EASY CONFIG SELECT---//
@@ -129,10 +129,11 @@ function getDefaultOptions($args) {
   $options['args']['exclude'] = false;  // if true, the xml file will be flagged exclude for the processing the media.
   $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig.ext)
   $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
+  $options['args']['deletecorrupt'] = false; // if true, corrupt files will be automatically deleted. (can be annoying if you're not fully automated)
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['language'] = "eng";  // Default language track
   $options['args']['filter_foreign'] = true; // filters out all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
-  $options['args']['delay'] = 30; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
+  $options['args']['delay'] = 15; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['timelock'] = false;  //Track if file has a timestamp that is in the future
@@ -141,7 +142,7 @@ function getDefaultOptions($args) {
   $options['args']['pix_fmts'] = array(//acceptable pix_fmts
     "yuv420p",
     "yuv420p10le",
-    "p010le"
+    "p010le",
   );
   $options['args']['cmdlnopts'] = array(
     "help",
@@ -324,8 +325,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   $options = ffanalyze($info, $options, $args, $dir, $file);
   if (empty($options)) {
     return;
-  }  
-
+  }
 
 // check the file's timestamp (Do not process if file time is too new. Still unpacking?)
   if (filemtime($file['basename']) > time()) {
@@ -345,8 +345,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
        if ( !isset($info['video']['mkvmerge'])  ||
            ( $info['video']['tracks'] > 1 ||
-             $info['audio']['tracks'] > 1     || 
-             $info['subtitle']['tracks'] > 1
+             $info['audio']['tracks'] > 1
            ) ||
            $options['args']['force']
        ) {
@@ -451,9 +450,6 @@ function processItem($dir, $item, $options, $args, $stats) {
   if($status === 255) {
     //status(255) => CTRL-C    
     exit;
-  } else if ($status === 127) {
-    //corrupt file, encoding crashed
-    unlink($file['basename']);
   }
 
 #Swap Validate
@@ -481,11 +477,8 @@ function processItem($dir, $item, $options, $args, $stats) {
   if (empty($info)) {
     return;
   }
-
-#Validate
   if (!$options['args']['keeporiginal'] && isset($fileorig)) {
     $mtime = filemtime($fileorig['filename'] . ".orig." . $fileorig['extension']);
-
     $reasons = array();
     if ($info['format']['probe_score'] < 100) {
       $reasons[] = "probe_score = " . $info['format']['probe_score'];
@@ -504,9 +497,8 @@ function processItem($dir, $item, $options, $args, $stats) {
       ){
       $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 0, false) . ")";
     }
-
     if (empty($reasons) || ($options['args']['force'])) {
-      echo "\n========================================================\n";
+      echo "================================================================================\n";
       echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . 
         formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 2, true) . 
         " [orig] - " . formatBytes($info['format']['size'], 2, true) . 
@@ -515,7 +507,9 @@ function processItem($dir, $item, $options, $args, $stats) {
         $stats['byteSaved'] += (filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']));
         $stats['reEncoded']++;
       }
-      unlink($fileorig['filename'] . ".orig." . $fileorig['extension']);
+      if (file_exists($fileorig['filename'] . ".orig." . $fileorig['extension'])) {
+        unlink($fileorig['filename'] . ".orig." . $fileorig['extension']);
+      }
       if (file_exists($file['filename'] . $options['extension'])) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination'])) {
@@ -537,10 +531,11 @@ function processItem($dir, $item, $options, $args, $stats) {
       if (file_exists($file['filename'] . ".hevc")) {
         unlink($file['filename'] . ".hevc");
       }
-      if (file_exists($file['filename'] . "." . $options['extension'])) {
+      if (file_exists($file['filename'] . "." . $options['extension']) && 
+          file_exists($file['filename'] . ".orig." . $file['extension'], $file['basename']) ) {
         unlink($file['filename'] . "." . $options['extension']);
+        rename($file['filename'] . ".orig." . $file['extension'], $file['basename']);
       }
-      rename($file['filename'] . ".orig." . $file['extension'], $file['basename']);
       if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
         unlink("./.xml/" . $file['filename'] . ".xml");
         $options['args']['exclude'] = true;
@@ -605,12 +600,13 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     if (!isset($info['video']['bitrate'])) {
       $info['video']['bitrate'] = 0;
     }
-
+    
     // Analizing for encoding or copy
     if (
       preg_match(strtolower("/$codec_name/"), $info['video']['codec']) &&
       (in_array($info['video']['pix_fmt'], $options['args']['pix_fmts'])) &&
       ($info['video']['height'] <= $options['video']['scale']) &&
+      ($info['video']['bitrate'] !== 0) &&
       ($info['video']['bitrate'] <= ($options['video']['bps'] * $options['video']['quality_factor'])) &&
       (!$options['args']['override'])
     ) {
