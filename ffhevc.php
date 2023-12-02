@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231126.1417;
+$VERSION = 20231202.0758;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -509,7 +509,7 @@ function processItem($dir, $item, $options, $args, $stats) {
       }
       if (file_exists($fileorig['filename'] . ".orig." . $fileorig['extension'])) {
         unlink($fileorig['filename'] . ".orig." . $fileorig['extension']);
-      }
+      } 
       if (file_exists($file['filename'] . $options['extension'])) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination'])) {
@@ -570,6 +570,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $options = array();
     return($options);
   }
+
   if (isset($info['format']['exclude']) && $info['format']['exclude'] == "1" && !$options['args']['override']) {
     if ($options['args']['verbose']) {
       print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --override option to override.\n";
@@ -598,9 +599,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $options['video']['bps'] = (round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) * 1000);
 
     if (!isset($info['video']['bitrate'])) {
-      $info['video']['bitrate'] = 0;
+      $info['video']['bitrate'] = $options['video']['bps'];
     }
-    
+
     // Analizing for encoding or copy
     if (
       preg_match(strtolower("/$codec_name/"), $info['video']['codec']) &&
