@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231202.0758;
+$VERSION = 20231208.1529;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -249,13 +249,13 @@ else {
 foreach ($dirs as $key => $dir) {
   processRecursive($dir, $options, $args, $stats);
   if ($stats['processed']) {
-    print "Scanned Videos: " . $stats['processed'] . "\n";
+    print "Scanned Videos: \033[01;33m" . $stats['processed'] . "\033[0m\n";
   }
   if ($stats['reEncoded']) {
-    print "Re-Encoded    : " . $stats['reEncoded'] . "\n";
+    print "Re-Encoded    : \033[01;34m" . $stats['reEncoded'] . "\033[0m\n";
   }
   if ($stats['byteSaved']) {
-    print "Space Saved   : " . formatBytes($stats['byteSaved'], 0, true). "\n";
+    print "Space Saved   : \033[01;32m" . formatBytes($stats['byteSaved'], 0, true). "\033[0m\n";
   }
 }
 
@@ -459,8 +459,9 @@ function processItem($dir, $item, $options, $args, $stats) {
     }
   }
   if (file_exists($file['basename'])) {
-    rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
-    $fileorig = $file;
+    //TODO:  Simplify fileorig below 
+    rename($$file['basename'], $file['filename'] . ".orig." . $file['extension']);
+    $fileorig= pathinfo("$dir" . DIRECTORY_SPEARATOR . $file['basename'], $file['filename'] . ".orig." . $file['extension']);    
   }
   if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
     unlink("./.xml/" . $file['filename'] . ".xml");
@@ -478,7 +479,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     return;
   }
   if (!$options['args']['keeporiginal'] && isset($fileorig)) {
-    $mtime = filemtime($fileorig['filename'] . ".orig." . $fileorig['extension']);
+    $mtime = filemtime($fileorig['basename']);
     $reasons = array();
     if ($info['format']['probe_score'] < 100) {
       $reasons[] = "probe_score = " . $info['format']['probe_score'];
@@ -495,20 +496,20 @@ function processItem($dir, $item, $options, $args, $stats) {
       isset($info['format']['size']) &&
       (int) ($inforig['format']['size'] * $options['video']['filesize_tollerance']) < ((int) $info['format']['size'])
       ){
-      $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 0, false) . ")";
+      $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['basename']), 0, false) . ")";
     }
     if (empty($reasons) || ($options['args']['force'])) {
       echo "================================================================================\n";
       echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . 
-        formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']), 2, true) . 
+        formatBytes(filesize($fileorig['basename']), 2, true) . 
         " [orig] - " . formatBytes($info['format']['size'], 2, true) . 
-        " [new] = \033[01;32m" . formatBytes(filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
+        " [new] = \033[01;32m" . formatBytes(filesize($fileorig['basename']) - ($info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
       if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
-        $stats['byteSaved'] += (filesize($fileorig['filename'] . ".orig." . $fileorig['extension']) - ($info['format']['size']));
+        $stats['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
         $stats['reEncoded']++;
       }
-      if (file_exists($fileorig['filename'] . ".orig." . $fileorig['extension'])) {
-        unlink($fileorig['filename'] . ".orig." . $fileorig['extension']);
+      if (file_exists($fileorig['basename'])) {
+        unlink($fileorig['basename']);
       } 
       if (file_exists($file['filename'] . $options['extension'])) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
@@ -532,9 +533,9 @@ function processItem($dir, $item, $options, $args, $stats) {
         unlink($file['filename'] . ".hevc");
       }
       if (file_exists($file['filename'] . "." . $options['extension']) && 
-          file_exists($file['filename'] . ".orig." . $file['extension'], $file['basename']) ) {
+          file_exists($fileorig['basename']) ) {
         unlink($file['filename'] . "." . $options['extension']);
-        rename($file['filename'] . ".orig." . $file['extension'], $file['basename']);
+        rename($fileorig['basename'], $file['basename']);
       }
       if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
         unlink("./.xml/" . $file['filename'] . ".xml");
