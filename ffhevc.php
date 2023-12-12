@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231211.1203;
+$VERSION = 20231212.0748;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -460,7 +460,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
   if (file_exists($file['basename'])) {
     rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
-    $fileorig= pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['basename'], $file['filename'] . ".orig." . $file['extension']);    
+    $fileorig= pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".orig." . $file['extension']);    
   }
   if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
     unlink("./.xml/" . $file['filename'] . ".xml");
