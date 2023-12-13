@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231212.0748;
+$VERSION = 20231213.1029;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -14,19 +14,6 @@ $stats = array(
  'reEncoded' => 0,
  'byteSaved' => 0
 );
-//Only run one instance of this script.
-exec("ps -efW|grep -v grep|grep ffmpeg", $ffmpid);
-exec("ps -efW|grep -v grep|grep mkvmerge", $mkvmpid);
-if (!empty($ffmpid)) {
-  exit("FFMPEG already running on another process: $ffmpid[0]\n");
-}
-elseif (!empty($mkvmpid)) {
-  exit("MKVMERGE already running on another process: $mkvmpid[0]\n");
-}
-//If stop file is detected and no other processes detected, delete it and continue.
-if (file_exists("$stop")) {
-  unlink("$stop");
-}
 
 function getDefaultOptions($args) {
   $options = array();
@@ -246,6 +233,21 @@ else {
 }
 
 /* ----------MAIN------------------ */
+
+//Only run one instance of this script.
+exec("ps -efW|grep -v grep|grep ffmpeg", $ffmpid);
+exec("ps -efW|grep -v grep|grep mkvmerge", $mkvmpid);
+if (!empty($ffmpid) && !$options['args']['force']) {
+  exit("FFMPEG already running on another process: $ffmpid[0]\n");
+}
+elseif (!empty($mkvmpid)) {
+  exit("MKVMERGE already running on another process: $mkvmpid[0]\n");
+}
+//If stop file is detected and no other processes detected, delete it and continue.
+if (file_exists("$stop")) {
+  unlink("$stop");
+}
+
 foreach ($dirs as $key => $dir) {
   processRecursive($dir, $options, $args, $stats);
   if ($stats['processed']) {
