@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231221.1205;
+$VERSION = 20231221.1747;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -240,7 +240,7 @@ exec("ps -efW|grep -v grep|grep mkvmerge", $mkvmpid);
 if (!empty($ffmpid) && !$options['args']['force']) {
   exit("FFMPEG already running on another process: $ffmpid[0]\n");
 }
-elseif (!empty($mkvmpid)) {
+elseif (!empty($mkvmpid)  && !$options['args']['force']) {
   exit("MKVMERGE already running on another process: $mkvmpid[0]\n");
 }
 //If stop file is detected and no other processes detected, delete it and continue.
