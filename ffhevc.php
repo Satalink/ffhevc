@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231221.1139;
+$VERSION = 20231221.1205;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -427,7 +427,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     $options['args']['meta'] = '';
   }
 
-# CONVERT MEDIA
+  # CONVERT MEDIA
   $cmdln = "nice -n1 ffmpeg -v " .
     $options['args']['loglev'] . " " .
     "-i \"" . $file['basename'] . "\" " .
@@ -452,7 +452,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     exit;
   }
 
-#Swap Validate
+ #Swap Validate
   if ($options['args']['keepowner']) {
     if (file_exists($file['basename'])) {
       $options['owner'] = fileowner($file['basename']);
@@ -608,7 +608,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       (in_array($info['video']['pix_fmt'], $options['args']['pix_fmts'])) &&
       ($info['video']['height'] <= $options['video']['scale']) &&
       ($info['video']['bitrate'] !== 0) &&
-      ($info['video']['bitrate'] <= ($options['video']['bps'] * $options['video']['quality_factor'])) &&
+      ($info['video']['bitrate'] <= $options['video']['bps']) &&
       (!$options['args']['override'])
     ) {
       $options['args']['video'] = "-vcodec copy";
@@ -626,7 +626,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
         $info['video']['pix_fmt'] . "~=" . $options['args']['pix_fmts'][$pf_key] . "," .
         $info['video']['height'] . "<=" . $options['video']['scale'] . "," .
-        $info['video']['bitrate'] . "<=" . ( $options['video']['bps'] * $options['video']['quality_factor']) . "," . // give some tollerance
+        $info['video']['bitrate'] . "<=" . $options['video']['bps'] . "," . // give some tollerance
         $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
       list($ratio_w, $ratio_h) = explode(":", $info['video']['ratio']);
       
