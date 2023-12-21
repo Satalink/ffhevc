@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231213.1029;
+$VERSION = 20231221.1139;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -306,7 +306,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     if (empty($info)) {
       return;
     }
-    setXmlAttributeExclude($file);
+    setXmlFormatAttribute($file, "exclude");
     return;
   }
   if (isset($stats['processed'])) {  
@@ -345,10 +345,7 @@ function processItem($dir, $item, $options, $args, $stats) {
 //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
     if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
-       if ( !isset($info['video']['mkvmerge'])  ||
-           ( $info['video']['tracks'] > 1 ||
-             $info['audio']['tracks'] > 1
-           ) ||
+       if ( !$info['format']['mkvmerged'] ||
            $options['args']['force']
        ) {
           $cmdln = "mkvmerge" .
@@ -369,6 +366,7 @@ function processItem($dir, $item, $options, $args, $stats) {
           rename($file['filename'] . ".mkvm", $file['filename'] . ".mkv");
           touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
           $info = ffprobe($file, $options);
+          setXmlFormatAttribute($file, "mkvmerged");
           $options = ffanalyze($info, $options, $args, $dir, $file);
           if (empty($options)) {
             return;
@@ -550,7 +548,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     if (empty($info)) {
       return;
     }
-    setXmlAttributeExclude($file);
+    setXmlFormatAttribute($file, "exclude");
   }
 
   if ($options['args']['cooldown'] > 0) {
@@ -573,7 +571,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     return($options);
   }
 
-  if (isset($info['format']['exclude']) && $info['format']['exclude'] == "1" && !$options['args']['override']) {
+  if ($info['format']['exclude'] && !$options['args']['override']) {
     if ($options['args']['verbose']) {
       print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --override option to override.\n";
     }
@@ -598,13 +596,13 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   if (!empty($info['video'])) {
     $codec_name = $options['video']['codec_name'];
     $options['video']['vps'] = round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) . "k";
-    $options['video']['bps'] = (round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) * 1000);
+    $options['video']['bps'] = (round((($info['video']['height'] + $info['video']['width']) * $options['video']['quality_factor']), -2) * 1000);
 
     if (!isset($info['video']['bitrate'])) {
-      $info['video']['bitrate'] = $options['video']['bps'];
+      //$info['video']['bitrate'] = $options['video']['bps'];
+      $info['video']['bitrate'] = 0;
     }
 
-    // Analizing for encoding or copy
     if (
       preg_match(strtolower("/$codec_name/"), $info['video']['codec']) &&
       (in_array($info['video']['pix_fmt'], $options['args']['pix_fmts'])) &&
@@ -914,7 +912,8 @@ function ffprobe($file, $options) {
   $info['format']['bitrate'] = getXmlAttribute($xml->format, "bit_rate") ?: getXmlAttribute($xml->format, "BPS");
   $info['format']['nb_streams'] = getXmlAttribute($xml->format, "nb_streams");
   $info['format']['probe_score'] = getXmlAttribute($xml->format, "probe_score");
-  $info['format']['exclude'] = getXmlAttribute($xml->format, "exclude");
+  $info['format']['exclude'] = getXmlAttribute($xml->format, "exclude") ?: false;
+  $info['format']['mkvmerged'] = getXmlAttribute($xml->format, "mkvmerged") ?: false;
   $info['video'] = [];
   $info['audio'] = [];
   $info['subtitle'] = [];
@@ -925,8 +924,6 @@ function ffprobe($file, $options) {
         case "video":
           if (empty($info['video'])) {
             $vtags = array();
-            if(!empty($info['video']['tracks'])) {}
-            $info['video']['tracks'] = 1;
             $info['video']['index'] = getXmlAttribute($stream, "index");
             $info['video']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['video']['codec'] = getXmlAttribute($stream, "codec_name");
@@ -942,14 +939,11 @@ function ffprobe($file, $options) {
             $info['video']['color_transfer'] = getXmlAttribute($stream, "color_transfer");
             $info['video']['color_primaries'] = getXmlAttribute($stream, "color_primaries");
             $info['video']['hdr'] = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_primaries")) ? getXmlAttribute($stream, "color_primaries") : false;
-            foreach ($stream->tag as $tag) {
+            foreach ($stream->tags->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
-//              print "\n" . $tag_key . " : " . $tag_val . "\n";
-              if (preg_match('/mkvmerge/', $tag_val)) {
-                $info['video']['mkvmerge'] = "$tag_val";
-              }
+              //print "\n" . $tag_key . " : " . $tag_val . "\n";
               if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
                 $info['video']['bitrate'] = (int) $tag_val;
               }
@@ -964,14 +958,11 @@ function ffprobe($file, $options) {
               $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
             }
             $info['vtags'] = $vtags;
-          } else {
-            $info['video']['tracks']++;
           }
           break;
         case "audio":
           if (empty($info['audio'])) {
             $atags = array();
-            $info['audio']['tracks'] = 1;
             $info['audio']['index'] = getXmlAttribute($stream, "index");
             $info['audio']['title'] = getXmlAttribute($stream, "title");
             $info['audio']['codec_type'] = getXmlAttribute($stream, "codec_type");
@@ -984,9 +975,6 @@ function ffprobe($file, $options) {
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
 //              print "\n" . $tag_key . " : " . $tag_val . "\n";
-              if (preg_match('/mkvmerge/', $tag_val)) {
-                $info['audio']['mkvmerge'] = "$tag_val";
-              }
               if ($tag_key == "language") {
                 if ($tag_val !== $options['args']['language']) {
                   $info['filters']['audio']['language'][] = $tag_val;
@@ -1015,18 +1003,13 @@ function ffprobe($file, $options) {
               $atags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
             }
             $info['atags'] = $atags;
-          } else {
-            $info['audio']['tracks']++;
           }
           break;
         case "subtitle":
           if (empty($info['subtitle'])) {
-            $info['subtitle']['tracks'] = 1;
             $info['subtitle']['index'] = getXmlAttribute($stream, "index");
             $info['subtitle']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['subtitle']['codec'] = getXmlAttribute($stream, "codec_name");
-          } else {
-            $info['subtitle']['tracks']++;
           }
           break;
       }
@@ -1251,11 +1234,11 @@ function getXmlAttribute($object, $attribute) {
   return((string) $object[$attribute]);
 }
 
-function setXmlAttributeExclude($file) {
+function setXmlFormatAttribute($file, $attribute, $value=true) {
   $xml_file = "./.xml/" . $file['filename'] . ".xml";
   if (file_exists($xml_file)) {
     $xml = new SimpleXMLElement($xml_file, null, true);
-    $xml->format->addAttribute("exclude", true);
+    $xml->format->addAttribute("$attribute", $value);
     $xml->saveXML($xml_file);
   }
 }
