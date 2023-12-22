@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231221.1747;
+$VERSION = 20231221.1927;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -618,7 +618,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   // var_dump($options['video']);
   // var_dump($options['args']['video']);
   // exit;
-
   
     if (!preg_match("/copy/i", $options['args']['video'])) {
       $pf_key = array_search($info['video']['pix_fmt'], $options['args']['pix_fmts']);
@@ -694,15 +693,13 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   }
 
   //Audio
-  if ($options['audio']['bitrate'] == 0 || stripos($info['audio']['title'], "comment")) {
+  if ($options['audio']['bitrate'] == 0) {
     $info['audio'] = null;
   }
+  
   if (!empty($info['audio'])) {
-    $title = "Default Track";
-    if (!empty($info['audio']['title'])) {
-      $title = isset($info['audio']['title']) ? $info['audio']['title'] : "Default Track";
-    }
-    if (!stripos($title, "comment")) {
+    $title = isset($info['audio']['title']) ? $info['audio']['title'] : "Default Track";
+    if (!preg_match("/comment/i", $title)) {
       if (
         in_array($info['audio']['codec'], $options['audio']['codecs']) &&
         (int) ((filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) * $options['audio']['quality_factor']) &&
@@ -939,23 +936,44 @@ function ffprobe($file, $options) {
             $info['video']['color_transfer'] = getXmlAttribute($stream, "color_transfer");
             $info['video']['color_primaries'] = getXmlAttribute($stream, "color_primaries");
             $info['video']['hdr'] = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_primaries")) ? getXmlAttribute($stream, "color_primaries") : false;
-            foreach ($stream->tags->tag as $tag) {
-              $tag_key = strtolower(getXmlAttribute($tag, "key"));
-              $tag_val = strtolower(getXmlAttribute($tag, "value"));
-              $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
-              //print "\n" . $tag_key . " : " . $tag_val . "\n";
-              if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
-                $info['video']['bitrate'] = (int) $tag_val;
-              }
-              if (preg_match('/^bit[\-\_]rate$/i', $tag_key) && !isset($info['video']['bitrate'])) {
-                if (preg_match("/k/i", $tag_val)) {
-                  $info['video']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
-                }
-                else {
+            if(isset($stream->tags->tag)) {
+              foreach ($stream->tags->tag as $tag) {
+                $tag_key = strtolower(getXmlAttribute($tag, "key"));
+                $tag_val = strtolower(getXmlAttribute($tag, "value"));
+                $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
+                //print "\n" . $tag_key . " : " . $tag_val . "\n";
+                if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
                   $info['video']['bitrate'] = (int) $tag_val;
                 }
+                if (preg_match('/^bit[\-\_]rate$/i', $tag_key) && !isset($info['video']['bitrate'])) {
+                  if (preg_match("/k/i", $tag_val)) {
+                    $info['video']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
+                  }
+                  else {
+                    $info['video']['bitrate'] = (int) $tag_val;
+                  }
+                }
+                $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
               }
-              $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
+            } elseif (isset($stream->tag)) {
+              foreach ($stream->tag as $tag) {
+                $tag_key = strtolower(getXmlAttribute($tag, "key"));
+                $tag_val = strtolower(getXmlAttribute($tag, "value"));
+                $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
+                //print "\n" . $tag_key . " : " . $tag_val . "\n";
+                if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
+                  $info['video']['bitrate'] = (int) $tag_val;
+                }
+                if (preg_match('/^bit[\-\_]rate$/i', $tag_key) && !isset($info['video']['bitrate'])) {
+                  if (preg_match("/k/i", $tag_val)) {
+                    $info['video']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
+                  }
+                  else {
+                    $info['video']['bitrate'] = (int) $tag_val;
+                  }
+                }
+                $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
+              }            
             }
             $info['vtags'] = $vtags;
           }
