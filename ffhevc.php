@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20231229.1039;
+$VERSION = 20240101.1417;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -12,7 +12,8 @@ $args = array();
 $stats = array(
  'processed' => 0,
  'reEncoded' => 0,
- 'byteSaved' => 0
+ 'byteSaved' => 0,
+ 'starttime' => time()
 );
 
 function getDefaultOptions($args) {
@@ -105,10 +106,11 @@ function getDefaultOptions($args) {
   $options['audio']['max_streams'] = 1;  //Maximum number of audio streams to keep
 
   $options['args']['application'] = $args['application'];
+  $options['args']['extensions'] = array("mkv", "mp4");
   $options['args']['verbose'] = false;
   $options['args']['test'] = false;
   $options['args']['yes'] = false;
-  $optiosn['args']['keys'] = false;
+  $options['args']['keys'] = false;
   $options['args']['force'] = false;
   $options['args']['skip'] = false;
   $options['args']['override'] = false;
@@ -122,10 +124,10 @@ function getDefaultOptions($args) {
   $options['args']['filter_foreign'] = true; // filters out all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
   $options['args']['delay'] = 15; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
-  $options['args']['loglev'] = "info";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
+  $options['args']['loglev'] = "quiet";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['timelock'] = false;  //Track if file has a timestamp that is in the future
   $options['args']['threads'] = 0;
-  $options['args']['maxmuxqueuesize'] = 4096;
+  $options['args']['maxmuxqueuesize'] = 8192;
   $options['args']['pix_fmts'] = array(//acceptable pix_fmts
     "yuv420p",
     "yuv420p10le",
@@ -251,14 +253,16 @@ if (file_exists("$stop")) {
 foreach ($dirs as $key => $dir) {
   processRecursive($dir, $options, $args, $stats);
   if ($stats['processed']) {
-    print "Scanned Videos: \033[01;33m" . $stats['processed'] . "\033[0m\n";
+    print "\033[01;34mScanned Videos: \033[01;33m" . $stats['processed'] . "\033[0m\n";
   }
   if ($stats['reEncoded']) {
-    print "Re-Encoded    : \033[01;34m" . $stats['reEncoded'] . "\033[0m\n";
+    print "\033[01;34mRe-Encoded    : \033[01;34m" . $stats['reEncoded'] . "\033[0m\n";
   }
   if ($stats['byteSaved']) {
-    print "Space Saved   : \033[01;32m" . formatBytes($stats['byteSaved'], 0, true). "\033[0m\n";
+    print "\033[01;34mSpace Saved   : \033[01;32m" . formatBytes($stats['byteSaved'], 0, true). "\033[0m\n";
   }
+  $totaltime = (time() - $stats['starttime']);
+  print "\033[01;34mTotal Time: \033[01;32m" . sprintf('%02d:%02d:%02d', ($totaltime/3600),($totaltime/60%60), $totaltime%60) . " \033[01;34mseconds\033[0m"; 
 }
 
 /* ## ## ## STATIC FUNCTIONS ## ## ## */
@@ -269,15 +273,16 @@ function processRecursive($dir, $options, $args, $stats) {
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
     global $stop;
+
     if (file_exists("$stop")) {
       unlink("$stop");
       exit("STOP FILE DETECTED: $stop");
     }
-   
+
     if (!$options['args']['followlinks'] && is_link($dir . DIRECTORY_SEPARATOR . $item )) {
-      //print "SKIPPED SYMLINK: ${dir}" . DIRECTORY_SEPARATOR . "${item}\n";
       continue;  //skip symbolic links
     }
+
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
       if (!preg_match("/_UNPACK_/", $item)) {
         cleanXMLDir($dir, $options);
@@ -285,6 +290,11 @@ function processRecursive($dir, $options, $args, $stats) {
       }
     }
     else {
+      $item_exploded = preg_split('/\./', $item);
+      $item_extension = end($item_exploded);
+      if (isset($item_extension) && !empty($item_extension) && !in_array(strtolower($item_extension), $options['args']['extensions'])) {
+        continue;  //skip non-accepted files by extension
+      }
       processItem($dir, $item, $options, $args, $stats);
     }
   }
@@ -292,15 +302,15 @@ function processRecursive($dir, $options, $args, $stats) {
 
 function processItem($dir, $item, $options, $args, $stats) {
   global $stats;
-  $extensions = getExtensions();
+  $curdir = getcwd();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
   $file = titlecase_filename($file, $options);
-  if (
-    !isset($file['extension']) ||
-    !in_array(strtolower($file['extension']), $extensions)
-  ) {
-    return;
-  }
+  // if (
+  //   !isset($file['extension']) ||
+  //   !in_array(strtolower($file['extension']), $options['args']['extensions'])
+  // ) {
+  //   return;
+  // }
   if ($options['args']['exclude']) {
     $info = ffprobe($file, $options);
     if (empty($info)) {
@@ -309,11 +319,49 @@ function processItem($dir, $item, $options, $args, $stats) {
     setXmlFormatAttribute($file, "exclude");
     return;
   }
+  
+  // Convert original "accepted" format to Matroska (mkv) 
+  // acceptible formats configured in $options['args']['extensions']
+  if ($file['extension'] !== "mkv") {
+    echo "\033[01;31m" . $file['filename'] . "." . $file['extension'] . "\033[0m\n";
+    echo "\033[01;34mContainer Convert: \033[01;31m" . $file['extension'] . "\033[01;34m => \033[01;32mmkv\033[0m\n";
+    // [quiet, panic, fatal, error, warning, info, verbose, debug]
+    $subs = $file['extension'] === "mp4" ? "-sn " : ""; //Remove subs from mp4 files to prevent encoding issues
+    $cmdln = "ffmpeg " . 
+             "-hide_banner " .
+             "-v " . $options['args']['loglev'] . " " .
+             "-i '". $file['filename'] . "." . $file['extension'] . "' " .
+             "-c copy " .
+             "$subs" .
+             "-stats " .
+             "-y '" . $file['filename'] . ".mkv'";
+    if ($options['args']['verbose']) {
+      print "\033[01;32m$cmdln\033[0m\n";
+    }
+    exec("${cmdln}", $output, $status);
+    if($status === 255) {
+      //status(255) => CTRL-C    
+      exit;
+    }
+    if (file_exists($file['filename'] . ".mkv")) {
+      $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".mkv");
+      $mtime = filemtime($file['basename']);
+      unlink($file['basename']);
+      $mkv_filename = $mkv_file['filename'] . ".mkv";
+      touch($mkv_filename, $mtime); //retain original timestamp
+      $info = ffprobe($mkv_file, $options);
+      $options = ffanalyze($info, $options, $args, $dir, $mkv_file);
+      if (empty($options)) {
+        return;
+      }
+      processItem($dir, $mkv_filename, $options, $args, $stats);
+      return;
+    } 
+  }
+
   if (isset($stats['processed'])) {  
     $stats['processed']++;
   }
-  $curdir = getcwd();
-  chdir($file['dirname']);
 
 # Process Item
   $options['info']['title'] = "'" . str_replace("'", "\'", $file['filename']) . "'";
@@ -341,7 +389,6 @@ function processItem($dir, $item, $options, $args, $stats) {
     return;
   }
 
-
 //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
     if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
@@ -358,7 +405,9 @@ function processItem($dir, $item, $options, $args, $stats) {
           " --no-attachments" .
           " --track-tags '" . $options['args']['language'] . "'" .
           " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
-        print "\n\n\033[01;32m${cmdln}\033[0m\n";
+        if ($options['args']['verbose']) {
+          print "\n\n\033[01;32m${cmdln}\033[0m\n";
+        }
         system("${cmdln} 2>&1");
         if (file_exists($file['filename'] . ".mkvm")) {
           $mtime = filemtime($file['basename']);
@@ -428,8 +477,9 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
 
   # CONVERT MEDIA
-  $cmdln = "nice -n1 ffmpeg -v " .
-    $options['args']['loglev'] . " " .
+  $cmdln = "nice -n1 ffmpeg " . 
+    "-hide_banner " . 
+    "-v " . $options['args']['loglev'] . " " .
     "-i \"" . $file['basename'] . "\" " .
     "-threads " . $options['args']['threads'] . " " .
     "-profile:v " . $options['profile'] . " " .
@@ -439,10 +489,12 @@ function processItem($dir, $item, $options, $args, $stats) {
     $options['args']['subs'] . " " .
     $options['args']['map'] . " " .
     $options['args']['meta'] . " " .
+    "-stats " .
     "-y \"" . $file['filename'] . ".hevc\"";
-
-  print "\n\n\033[01;32m${cmdln}\033[0m\n\n";
-
+  if ($options['args']['verbose']) {
+    print "\n\n\033[01;32m${cmdln}\033[0m\n\n";
+  }
+  print "\033[01;32mHEVC Encoding: " . $file['basename'] . "\033[0m\n";
   if ($options['args']['test']) {
     exit;
   }
@@ -1276,11 +1328,6 @@ function formatBytes($bytes, $precision, $kbyte) {
     $bytes /= pow(1000, $pow);
   }
   return round($bytes, $precision) . ' ' . $units[$pow];
-}
-
-function getExtensions() {
-  $extensions = array("mkv");
-  return($extensions);
 }
 
 function cleanXMLDir($dir, $options) {
