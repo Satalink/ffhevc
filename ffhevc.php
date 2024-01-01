@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240101.1417;
+$VERSION = 20240101.1611;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -106,7 +106,8 @@ function getDefaultOptions($args) {
   $options['audio']['max_streams'] = 1;  //Maximum number of audio streams to keep
 
   $options['args']['application'] = $args['application'];
-  $options['args']['extensions'] = array("mkv", "mp4");
+  $options['args']['output_format'] = "mkv";
+  $options['args']['extensions'] = array("mkv", "mp4", "mpeg", "ts", "m2ts", "avi");
   $options['args']['verbose'] = false;
   $options['args']['test'] = false;
   $options['args']['yes'] = false;
@@ -262,7 +263,7 @@ foreach ($dirs as $key => $dir) {
     print "\033[01;34mSpace Saved   : \033[01;32m" . formatBytes($stats['byteSaved'], 0, true). "\033[0m\n";
   }
   $totaltime = (time() - $stats['starttime']);
-  print "\033[01;34mTotal Time: \033[01;32m" . sprintf('%02d:%02d:%02d', ($totaltime/3600),($totaltime/60%60), $totaltime%60) . " \033[01;34mseconds\033[0m"; 
+  print "\033[01;34mTotal Time    : \033[01;32m" . sprintf('%02d:%02d:%02d', ($totaltime/3600),($totaltime/60%60), $totaltime%60) . "\033[0m"; 
 }
 
 /* ## ## ## STATIC FUNCTIONS ## ## ## */
@@ -302,7 +303,6 @@ function processRecursive($dir, $options, $args, $stats) {
 
 function processItem($dir, $item, $options, $args, $stats) {
   global $stats;
-  $curdir = getcwd();
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
   $file = titlecase_filename($file, $options);
   // if (
@@ -334,7 +334,7 @@ function processItem($dir, $item, $options, $args, $stats) {
              "-c copy " .
              "$subs" .
              "-stats " .
-             "-y '" . $file['filename'] . ".mkv'";
+             "-y '" . $file['filename'] . "." . $options['args']['output_format'] . "'";
     if ($options['args']['verbose']) {
       print "\033[01;32m$cmdln\033[0m\n";
     }
@@ -362,6 +362,9 @@ function processItem($dir, $item, $options, $args, $stats) {
   if (isset($stats['processed'])) {  
     $stats['processed']++;
   }
+
+  $curdir = getcwd();
+  chdir($file['dirname']);  
 
 # Process Item
   $options['info']['title'] = "'" . str_replace("'", "\'", $file['filename']) . "'";
@@ -396,6 +399,7 @@ function processItem($dir, $item, $options, $args, $stats) {
            $options['args']['force']
        ) {
           $cmdln = "mkvmerge" .
+          " --gui-mode" .
           " --language 0:" . $options['args']['language'] .
           " --language 1:" . $options['args']['language'] .
           " --video-tracks " . $info['video']['index'] .
@@ -408,7 +412,7 @@ function processItem($dir, $item, $options, $args, $stats) {
         if ($options['args']['verbose']) {
           print "\n\n\033[01;32m${cmdln}\033[0m\n";
         }
-        system("${cmdln} 2>&1");
+        system("${cmdln} 2>&1|grep -i progress");
         if (file_exists($file['filename'] . ".mkvm")) {
           $mtime = filemtime($file['basename']);
           unlink($file['basename']);
@@ -494,7 +498,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   if ($options['args']['verbose']) {
     print "\n\n\033[01;32m${cmdln}\033[0m\n\n";
   }
-  print "\033[01;32mHEVC Encoding: " . $file['basename'] . "\033[0m\n";
+  print "\033[01;34mHEVC Encoding: \033[01;32m" . $file['basename'] . "\033[0m\n";
   if ($options['args']['test']) {
     exit;
   }
@@ -920,6 +924,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
 }
 
 function ffprobe($file, $options) {
+  print getcwd() . "\n";
   $exec_args = "-v quiet -print_format xml -show_format -show_streams";
   $basename = $file['basename'];
   $filename = $file['filename'];
@@ -1107,20 +1112,18 @@ function ffprobe($file, $options) {
     empty($info['video']) ||
     empty($info['audio'])
   ) {
-    $del = null;
     $missing = null;
     if (!$options['args']['yes'] && $file['extension'] == $options['extension']) {
       if (empty($info['video'])) {
         $missing = "video";
       }
       if (empty($info['audio'])) {
-        $missing = 'audio';
+        $missing += ' audio';
       }
       print "\033[01;34m " . $file['filename'] . " $missing track is missing\033[0m\n";
       print "Delete " . $file['basename'] . "?  [Y/n] >";
-      $del = rtrim(fgets(STDIN));
     }
-    if (!preg_match('/n/i', $del) && !$options['args']['exclude']) {
+    if (!$options['args']['exclude']) {
       if (file_exists($file['basename'])) {
         unlink($file['basename']);
       }
