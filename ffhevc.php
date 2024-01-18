@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240118.1743;
+$VERSION = 20240118.1802;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -745,6 +745,8 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -metadata:s:v:0 bit_rate=" . $options['video']['vps'] .
         " -metadata:s:v:0 bps=" . $options['video']['bps'] .
         " -metadata:s:v:0 title= ";
+        print "\033[01;32mVideo Inspection ->\033[0m" .
+        "track:copy\n";
     }
     $options['args']['map'] .= "-map 0:v? ";
   }
@@ -850,7 +852,12 @@ function ffanalyze($info, $options, $args, $dir, $file) {
           " -metadata:s:a:0 title=" . isset($info['audio']['title']) ? $info['audio']['title'] : "Default Track";
       }
       $options['args']['map'] .= "-map 0:a? ";
+      print "\033[01;32mAudio Inspection ->\033[0m" .
+      "track:copy\n";
     }
+  } else {
+    print "\033[01;32mAudio Inspection ->\033[0m" .
+    "info:missing\n";
   }
 
   //Subtexts
