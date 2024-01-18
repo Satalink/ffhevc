@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240101.1611;
+$VERSION = 20240118.1402;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -254,16 +254,18 @@ if (file_exists("$stop")) {
 foreach ($dirs as $key => $dir) {
   processRecursive($dir, $options, $args, $stats);
   if ($stats['processed']) {
-    print "\033[01;34mScanned Videos: \033[01;33m" . $stats['processed'] . "\033[0m\n";
+    print "\n\033[01;34m######################################\033[0m\n";
+    print "\033[01;34m#  Scanned Videos: \033[01;33m" . $stats['processed'] . "\033[0m\n";
   }
   if ($stats['reEncoded']) {
-    print "\033[01;34mRe-Encoded    : \033[01;34m" . $stats['reEncoded'] . "\033[0m\n";
+    print "\033[01;34m#  Re-Encoded    : \033[01;34m" . $stats['reEncoded'] . "\033[0m\n";
   }
   if ($stats['byteSaved']) {
-    print "\033[01;34mSpace Saved   : \033[01;32m" . formatBytes($stats['byteSaved'], 0, true). "\033[0m\n";
+    print "\033[01;34m#  Space Saved   : \033[01;32m" . formatBytes($stats['byteSaved'], 0, true). "\033[0m\n";
   }
   $totaltime = (time() - $stats['starttime']);
-  print "\033[01;34mTotal Time    : \033[01;32m" . sprintf('%02d:%02d:%02d', ($totaltime/3600),($totaltime/60%60), $totaltime%60) . "\033[0m"; 
+  print "\033[01;34m#  Total Time    : \033[01;32m" . sprintf('%02d:%02d:%02d', ($totaltime/3600),($totaltime/60%60), $totaltime%60) . "\033[0m";
+  print "\n\033[01;34m######################################\033[0m\n";
 }
 
 /* ## ## ## STATIC FUNCTIONS ## ## ## */
@@ -393,13 +395,12 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
 
 //Preprocess with mkvmerge (if in path)
-  if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']) {
+  if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']||$options['args']['force']) {
     if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
        if ( !$info['format']['mkvmerged'] ||
            $options['args']['force']
        ) {
           $cmdln = "mkvmerge" .
-          " --gui-mode" .
           " --language 0:" . $options['args']['language'] .
           " --language 1:" . $options['args']['language'] .
           " --video-tracks " . $info['video']['index'] .
@@ -412,7 +413,7 @@ function processItem($dir, $item, $options, $args, $stats) {
         if ($options['args']['verbose']) {
           print "\n\n\033[01;32m${cmdln}\033[0m\n";
         }
-        system("${cmdln} 2>&1|grep -i progress");
+        system("${cmdln} 2>&1");
         if (file_exists($file['filename'] . ".mkvm")) {
           $mtime = filemtime($file['basename']);
           unlink($file['basename']);
@@ -924,7 +925,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
 }
 
 function ffprobe($file, $options) {
-  print getcwd() . "\n";
   $exec_args = "-v quiet -print_format xml -show_format -show_streams";
   $basename = $file['basename'];
   $filename = $file['filename'];
@@ -1045,12 +1045,13 @@ function ffprobe($file, $options) {
             $info['audio']['channels'] = getXmlAttribute($stream, "channels");
             $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate");
             $info['audio']['bitrate'] = getXmlAttribute($stream, "bit_rate");
-            foreach ($stream->tag as $tag) {
+            foreach ($stream->tags->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
-//              print "\n" . $tag_key . " : " . $tag_val . "\n";
+              print "\n" . $tag_key . " : " . $tag_val . "\n";
               if ($tag_key == "language") {
+                print "$tag_val language detected";
                 if ($tag_val !== $options['args']['language']) {
                   $info['filters']['audio']['language'][] = $tag_val;
                   $info['audio'] = array();
@@ -1399,7 +1400,7 @@ function titlecase_filename($file, $options) {
       $title[] = $word;
     }
     $titlename = implode(' ', $title);
-    rename($file['dirname'] . "/" . $file['basename'], $file['dirname'] . "/" . $titlename . "." . $file['extension']);
+    rename($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $file['dirname'] . DIRECTORY_SEPARATOR . $titlename . "." . $file['extension']);
     $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $titlename . "." . $file['extension']);
   }
   if (file_exists($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'])){
