@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240118.1439;
+$VERSION = 20240118.1655;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -1051,7 +1051,6 @@ function ffprobe($file, $options) {
               $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
               // print "\n" . $tag_key . " : " . $tag_val . "\n";
               if ($tag_key == "language") {
-                print "$tag_val language detected";
                 if ($tag_val !== $options['args']['language']) {
                   $info['filters']['audio']['language'][] = $tag_val;
                   $info['audio'] = array();
