@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240118.1655;
+$VERSION = 20240118.1743;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -993,44 +993,25 @@ function ffprobe($file, $options) {
             $info['video']['color_transfer'] = getXmlAttribute($stream, "color_transfer");
             $info['video']['color_primaries'] = getXmlAttribute($stream, "color_primaries");
             $info['video']['hdr'] = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_primaries")) ? getXmlAttribute($stream, "color_primaries") : false;
-            if(isset($stream->tags->tag)) {
-              foreach ($stream->tags->tag as $tag) {
-                $tag_key = strtolower(getXmlAttribute($tag, "key"));
-                $tag_val = strtolower(getXmlAttribute($tag, "value"));
-                $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
-                //print "\n" . $tag_key . " : " . $tag_val . "\n";
-                if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
-                  $info['video']['bitrate'] = (int) $tag_val;
-                }
-                if (preg_match('/^bit[\-\_]rate$/i', $tag_key) && !isset($info['video']['bitrate'])) {
-                  if (preg_match("/k/i", $tag_val)) {
-                    $info['video']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
-                  }
-                  else {
-                    $info['video']['bitrate'] = (int) $tag_val;
-                  }
-                }
-                $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
+
+            $stream_tag = isset($stream->tags->tag) ? $stream->tags->tag : isset($stream->tag) ? $stream->tag : null;
+            foreach ($stream->tag as $tag) {
+              $tag_key = strtolower(getXmlAttribute($tag, "key"));
+              $tag_val = strtolower(getXmlAttribute($tag, "value"));
+              $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
+              //print "\n" . $tag_key . " : " . $tag_val . "\n";
+              if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
+                $info['video']['bitrate'] = (int) $tag_val;
               }
-            } elseif (isset($stream->tag)) {
-              foreach ($stream->tag as $tag) {
-                $tag_key = strtolower(getXmlAttribute($tag, "key"));
-                $tag_val = strtolower(getXmlAttribute($tag, "value"));
-                $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
-                //print "\n" . $tag_key . " : " . $tag_val . "\n";
-                if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
+              if (preg_match('/^bit[\-\_]rate$/i', $tag_key) && !isset($info['video']['bitrate'])) {
+                if (preg_match("/k/i", $tag_val)) {
+                  $info['video']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
+                }
+                else {
                   $info['video']['bitrate'] = (int) $tag_val;
                 }
-                if (preg_match('/^bit[\-\_]rate$/i', $tag_key) && !isset($info['video']['bitrate'])) {
-                  if (preg_match("/k/i", $tag_val)) {
-                    $info['video']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
-                  }
-                  else {
-                    $info['video']['bitrate'] = (int) $tag_val;
-                  }
-                }
-                $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
-              }            
+              }
+              $vtags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
             }
             $info['vtags'] = $vtags;
           }
@@ -1045,7 +1026,9 @@ function ffprobe($file, $options) {
             $info['audio']['channels'] = getXmlAttribute($stream, "channels");
             $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate");
             $info['audio']['bitrate'] = getXmlAttribute($stream, "bit_rate");
-            foreach ($stream->tags->tag as $tag) {
+
+            $stream_tag = isset($stream->tags->tag) ? $stream->tags->tag : isset($stream->tag) ? $stream->tag : null;
+            foreach ($stream_tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
@@ -1186,6 +1169,10 @@ function getAudioBitrate($options, $args) {
     $options['audio']['bitrate'] = explode("|", $options['locations'][$args['key']])[2];
   }
   return($options);
+}
+
+function getTagParent($attr) {
+
 }
 
 function getCommandLineOptions($options, $args) {
