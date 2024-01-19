@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240118.1802;
+$VERSION = 20240119.0214;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -307,12 +307,13 @@ function processItem($dir, $item, $options, $args, $stats) {
   global $stats;
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
   $file = titlecase_filename($file, $options);
-  // if (
-  //   !isset($file['extension']) ||
-  //   !in_array(strtolower($file['extension']), $options['args']['extensions'])
-  // ) {
-  //   return;
-  // }
+  if (
+    !isset($file['extension']) ||
+    !in_array(strtolower($file['extension']), $options['args']['extensions'])
+  ) {
+    print "\033[01;31" . $file['basename'] ." format is not configured to be supported.\033[0m\n";
+    return;
+  }
   if ($options['args']['exclude']) {
     $info = ffprobe($file, $options);
     if (empty($info)) {
@@ -351,7 +352,7 @@ function processItem($dir, $item, $options, $args, $stats) {
       unlink($file['basename']);
       $mkv_filename = $mkv_file['filename'] . ".mkv";
       touch($mkv_filename, $mtime); //retain original timestamp
-      $info = ffprobe($mkv_file, $options);
+//      $info = ffprobe($mkv_file, $options);            
       $options = ffanalyze($info, $options, $args, $dir, $mkv_file);
       if (empty($options)) {
         return;
@@ -395,7 +396,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
 
 //Preprocess with mkvmerge (if in path)
-  if (`which mkvmerge` && !$options['args']['skip'] && !$options['args']['test']||$options['args']['force']) {
+  if (`which mkvmerge` && !$options['args']['skip'] && !$info['format']['mkvmerged']||$options['args']['force']) {
     if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
        if ( !$info['format']['mkvmerged'] ||
            $options['args']['force']
@@ -656,7 +657,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $options['video']['bps'] = (round((($info['video']['height'] + $info['video']['width']) * $options['video']['quality_factor']), -2) * 1000);
 
     if (!isset($info['video']['bitrate'])) {
-      //$info['video']['bitrate'] = $options['video']['bps'];
       $info['video']['bitrate'] = 0;
     }
 
@@ -685,7 +685,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         $info['video']['bitrate'] . "<=" . $options['video']['bps'] . "," . // give some tollerance
         $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
       list($ratio_w, $ratio_h) = explode(":", $info['video']['ratio']);
-      
+
       if ($info['video']['height'] > $options['video']['scale']) {
         //hard set info to be used for bitrate calculation based on scaled resolution
         $info['video']['width'] = (($info['video']['width'] * $options['video']['scale']) / $info['video']['height']);
@@ -745,8 +745,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         " -metadata:s:v:0 bit_rate=" . $options['video']['vps'] .
         " -metadata:s:v:0 bps=" . $options['video']['bps'] .
         " -metadata:s:v:0 title= ";
-        print "\033[01;32mVideo Inspection ->\033[0m" .
-        "track:copy\n";
     }
     $options['args']['map'] .= "-map 0:v? ";
   }
@@ -852,8 +850,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
           " -metadata:s:a:0 title=" . isset($info['audio']['title']) ? $info['audio']['title'] : "Default Track";
       }
       $options['args']['map'] .= "-map 0:a? ";
-      print "\033[01;32mAudio Inspection ->\033[0m" .
-      "track:copy\n";
     }
   } else {
     print "\033[01;32mAudio Inspection ->\033[0m" .
@@ -999,10 +995,12 @@ function ffprobe($file, $options) {
             $info['video']['color_space'] = getXmlAttribute($stream, "color_space");
             $info['video']['color_transfer'] = getXmlAttribute($stream, "color_transfer");
             $info['video']['color_primaries'] = getXmlAttribute($stream, "color_primaries");
-            $info['video']['hdr'] = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_primaries")) ? getXmlAttribute($stream, "color_primaries") : false;
+            $info['video']['hdr'] = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_primaries")) ? getXmlAttribute($stream, "color_primaries") : false;            
 
-            $stream_tag = isset($stream->tags->tag) ? $stream->tags->tag : isset($stream->tag) ? $stream->tag : null;
-            foreach ($stream->tag as $tag) {
+            if (!isset($stream->tags->tag)) {
+              $stream->tags->tag = null;
+            }
+            foreach ($stream->tags->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
@@ -1034,8 +1032,10 @@ function ffprobe($file, $options) {
             $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate");
             $info['audio']['bitrate'] = getXmlAttribute($stream, "bit_rate");
 
-            $stream_tag = isset($stream->tags->tag) ? $stream->tags->tag : isset($stream->tag) ? $stream->tag : null;
-            foreach ($stream_tag as $tag) {
+            if (!isset($stream->tags->tag)) {
+              $stream->tags->tag = null;
+            }
+            foreach ($stream->tags->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(getXmlAttribute($tag, "value"));
               $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
