@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240119.0214;
+$VERSION = 20240123.0543;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -240,10 +240,10 @@ else {
 //Only run one instance of this script.
 exec("ps -efW|grep -v grep|grep ffmpeg", $ffmpid);
 exec("ps -efW|grep -v grep|grep mkvmerge", $mkvmpid);
-if (!empty($ffmpid) && !$options['args']['force']) {
+if (!empty($ffmpid) && !$options['args']['force'] && !$options['args']['test']) {
   exit("FFMPEG already running on another process: $ffmpid[0]\n");
 }
-elseif (!empty($mkvmpid)  && !$options['args']['force']) {
+elseif (!empty($mkvmpid)  && !$options['args']['force'] && !$options['args']['test']) {
   exit("MKVMERGE already running on another process: $mkvmpid[0]\n");
 }
 //If stop file is detected and no other processes detected, delete it and continue.
@@ -341,25 +341,27 @@ function processItem($dir, $item, $options, $args, $stats) {
     if ($options['args']['verbose']) {
       print "\033[01;32m$cmdln\033[0m\n";
     }
-    exec("${cmdln}", $output, $status);
-    if($status === 255) {
-      //status(255) => CTRL-C    
-      exit;
-    }
-    if (file_exists($file['filename'] . ".mkv")) {
-      $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".mkv");
-      $mtime = filemtime($file['basename']);
-      unlink($file['basename']);
-      $mkv_filename = $mkv_file['filename'] . ".mkv";
-      touch($mkv_filename, $mtime); //retain original timestamp
-//      $info = ffprobe($mkv_file, $options);            
-      $options = ffanalyze($info, $options, $args, $dir, $mkv_file);
-      if (empty($options)) {
-        return;
+    if (!$options['args']['test']) {
+      exec("${cmdln}", $output, $status);
+      if($status === 255) {
+        //status(255) => CTRL-C    
+        exit;
       }
-      processItem($dir, $mkv_filename, $options, $args, $stats);
-      return;
-    } 
+      if (file_exists($file['filename'] . ".mkv")) {
+        $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".mkv");
+        $mtime = filemtime($file['basename']);
+        unlink($file['basename']);
+        $mkv_filename = $mkv_file['filename'] . ".mkv";
+        touch($mkv_filename, $mtime); //retain original timestamp
+        $info = ffprobe($mkv_file, $options);            
+        $options = ffanalyze($info, $options, $args, $dir, $mkv_file);
+        if (empty($options)) {
+          return;
+        }
+        processItem($dir, $mkv_filename, $options, $args, $stats);
+        return;
+      } 
+    }
   }
 
   if (isset($stats['processed'])) {  
@@ -396,7 +398,8 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
 
 //Preprocess with mkvmerge (if in path)
-  if (`which mkvmerge` && !$options['args']['skip'] && !$info['format']['mkvmerged']||$options['args']['force']) {
+  if (`which mkvmerge` && !$options['args']['skip'] && !$info['format']['mkvmerged'] && !$options['args']['test'] ||
+      $options['args']['force'] && !$options['args']['test']) {
     if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
        if ( !$info['format']['mkvmerged'] ||
            $options['args']['force']
@@ -500,17 +503,19 @@ function processItem($dir, $item, $options, $args, $stats) {
   if ($options['args']['verbose']) {
     print "\n\n\033[01;32m${cmdln}\033[0m\n\n";
   }
-  print "\033[01;34mHEVC Encoding: \033[01;32m" . $file['basename'] . "\033[0m\n";
-  if ($options['args']['test']) {
-    exit;
-  }
-  exec("${cmdln}", $output, $status);
-  if($status === 255) {
-    //status(255) => CTRL-C    
-    exit;
+  if (!$options['args']['test']) {
+    print "\033[01;34mHEVC Encoding: \033[01;32m" . $file['basename'] . "\033[0m\n";    
+    exec("${cmdln}", $output, $status);
+    if($status === 255) {
+      //status(255) => CTRL-C    
+      exit;
+    }
   }
 
  #Swap Validate
+  if ($options['args']['test']) {
+    return;
+  }
   if ($options['args']['keepowner']) {
     if (file_exists($file['basename'])) {
       $options['owner'] = fileowner($file['basename']);
@@ -678,7 +683,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   
     if (!preg_match("/copy/i", $options['args']['video'])) {
       $pf_key = array_search($info['video']['pix_fmt'], $options['args']['pix_fmts']);
-      print "\033[01;32mVideo Inspection ->\033[0m" .
+      print "\033[01;34mVideo Inspection ->\033[0m" .
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
         $info['video']['pix_fmt'] . "~=" . $options['args']['pix_fmts'][$pf_key] . "," .
         $info['video']['height'] . "<=" . $options['video']['scale'] . "," .
@@ -793,11 +798,15 @@ function ffanalyze($info, $options, $args, $dir, $file) {
           " -metadata:s:a:0 sample_rate=" . $info['audio']['sample_rate'] .
           " -metadata:s:a:0 bps=" . $info['audio']['bps'] .
           " -metadata:s:a:0 title= ";
+        if (!preg_match("/copy/i", $options['args']['video'])) {
+          print "\033[01;33mAudio Inspection ->\033[01;37mcopy\033[0m\n";
+        }
       }
       else {
-        print "\033[01;32mAudio Inspection ->\033[0m" .
+        print "\033[01;34mAudio Inspection ->\033[0m" .
           $info['audio']['codec'] . ":" . $options['audio']['codec'] . "," .
-          $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "\n";
+          $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "," .
+          $info['audio']['channels'] . "ch<=" . $options['audio']['channels'] . "ch\n";
         if (is_numeric($info['audio']['bitrate'])) {
           $info['audio']['bps'] = $info['audio']['bitrate'];
           $info['audio']['bitrate'] = (int) round(($info['audio']['bitrate'] / 1000)) . "k";
@@ -1086,7 +1095,7 @@ function ffprobe($file, $options) {
     !empty($info['video']) &&
     !empty($info['audio'])
   ) {
-    print "\033[01;34m${action}: " . $file['filename'] . " (";
+    print "\033[01;34m${action}: \033[01;32m" . $file['basename'] . " \033[01;34m(";
     if (!empty($info['video']) && !empty($info['video']['bitrate'])) {
       print $info['video']['codec_type'] . ":" . $info['video']['codec'] . ", " . $info['video']['width'] . "x" . $info['video']['height'] . ", " . formatBytes($info['video']['bitrate'], 2, false) . "PS | ";
     }
@@ -1099,8 +1108,7 @@ function ffprobe($file, $options) {
     print "\033[01;34m)\033[0m\n";
   }
   elseif (
-    empty($info['video']) ||
-    empty($info['audio'])
+    (empty($info['video']) || empty($info['audio'])) && !$options['args']['test']
   ) {
     $missing = null;
     if (!$options['args']['yes'] && $file['extension'] == $options['extension']) {
@@ -1113,7 +1121,7 @@ function ffprobe($file, $options) {
       print "\033[01;34m " . $file['filename'] . " $missing track is missing\033[0m\n";
       print "Delete " . $file['basename'] . "?  [Y/n] >";
     }
-    if (!$options['args']['exclude']) {
+    if (!$options['args']['exclude'] && !$options['args']['test']) {
       if (file_exists($file['basename'])) {
         unlink($file['basename']);
       }
