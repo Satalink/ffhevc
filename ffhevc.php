@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240124.1709;
+$VERSION = 20240124.1842;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -508,7 +508,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     print "\n\n\033[01;32m${cmdln}\033[0m\n\n";
   }
   if (!$options['args']['test']) {
-    print "\033[01;34mHEVC Encoding: \033[01;32m" . $file['basename'] . "\033[0m\n";    
+    print "\033[01;34mHEVC Encoding: \033[01;32m" . $file['basename'] . "\033[0m, runtime=" . seconds_toTime($info['format']['duration']) . "\n";    
     exec("${cmdln}", $output, $status);
     if($status === 255) {
       //status(255) => CTRL-C    
@@ -1397,28 +1397,28 @@ function rename_byCodecs($file, $options, $resolution=null, $acodec=null, $vcode
   $resolutions = array('720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
 
   $resolution  = isset($resolution) ?: set_resString($options['video']['scale']);
-  $vcodec      = isset($vcodec) ?: $options['video']['codec_long_name'];
-  $acodec      = isset($acodec) ?: $options['audio']['codec_long_name'];
+  $vcodec      = isset($vcodec) ?: $options['video']['codec_name'];
+  $acodec      = isset($acodec) ?: $options['audio']['codec'];
 
-  if (preg_match("\(\d+\)$")) {
+  if (preg_match("/\(\d+\)$/", $filename)) {
       $filename = $file['filename'] . "_${resolution}.${vcodec} ${acodec}";
       $filename_set = true;
   }
   if (!$filename_set) {
     foreach ($resolutions as $res) {
-      if (preg_match("/$res/", $filename)) {
+      if (preg_match("/$res/i", $filename)) {
         $filename = str_ireplace('/$res/',"$resolution",$filename);
         break;
       }
     } 
     foreach ($vcodecs as $vc) {
-      if (preg_match("/$vc/", $filename)) {
+      if (preg_match("/$vc/i", $filename)) {
         $filename = str_ireplace($vc,$vcodec,"$filename");
         break;
       }    
     }
     foreach ($acodecs as $ac) {
-      if (preg_match("/$ac/", $filename)) {
+      if (preg_match("/$ac/i", $filename)) {
         $filename = str_ireplace($ac,$acodec,"$filename");
         break;
       }        
@@ -1493,4 +1493,12 @@ function set_fileattr($file, $options) {
       chmod($file['basename'], $options['args']['permissions']);
     }
   }
+}
+
+function seconds_toTime($seconds) {
+  if(!preg_match('/^\d+:\d+:\d+$/', $seconds)) {
+    $seconds = round($seconds);
+    $seconds = sprintf('%02d:%02d:%02d', ($seconds/3600),($seconds/60%60), $seconds%60);
+  }
+  return($seconds);
 }
