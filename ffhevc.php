@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240123.0543;
+$VERSION = 20240124.1709;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -61,12 +61,12 @@ function getDefaultOptions($args) {
   }
 
 //Default configuration for video/audio encoding
-#Presets for Plex Direct Play  (use nvenc if you have GTX-1060+ or GTX-960+ Card)
-  $opt['H264'] = array("main", "matroska", ".mkv", "libx264", "yuv420p", "avc");
-  $opt['H264-nvenc'] = array("main", "matroska", ".mkv", "h264_nvenc", "yuv420p", "avc");
-  $opt['H265'] = array("main10", "matroska", ".mkv", "libx265", "yuv420p10le", "hevc");
-  $opt['hevc-nvenc-mkv'] = array("main10", "matroska", ".mkv", "hevc_nvenc", "yuv420p10le", "hevc");
-  $opt['hevc-nvenc-mp4'] = array("main10", "mp4", ".mp4", "hevc_nvenc", "p010le", "hevc");
+#Presets for Plex Direct Play  (use nvenc if you have Nvidia Graphics card that supports CUDA)
+  $opt['H264']            = array("main", "matroska", ".mkv", "libx264", "yuv420p", "avc", "x264");
+  $opt['H264-nvenc']      = array("main", "matroska", ".mkv", "h264_nvenc", "yuv420p", "avc", "x264");
+  $opt['H265']            = array("main10", "matroska", ".mkv", "libx265", "yuv420p10le", "hevc", "x265");
+  $opt['hevc-nvenc-mkv']  = array("main10", "matroska", ".mkv", "hevc_nvenc", "yuv420p10le", "hevc", "x265");
+  $opt['hevc-nvenc-mp4']  = array("main10", "mp4", ".mp4", "hevc_nvenc", "p010le", "hevc", "x265");
 
 //---EASY CONFIG SELECT---//
   $my_config = $opt['hevc-nvenc-mkv'];
@@ -97,8 +97,8 @@ function getDefaultOptions($args) {
   $options['video']['hdr']['color_primary'] = array("bt601|","bt709","bt2020");
   $options['video']['hdr']['color_transfer'] = array("bt601","bt709","smpte2084");
   $options['video']['hdr']['color_space'] = array("bt601","bt709","bt2020nc");
-  $options['audio']['codecs'] = array("aac", "ac3", "ac-3", "eac3",);   //("aac", "ac3", "libopus", "mp3") allow these c  $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
-  $options['audio']['codec'] = "eac3";  // ("aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none")
+  $options['audio']['codecs'] = array("ac3", "eac3");   //("aac", "ac3", "libopus", "mp3") allow these codecs : $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
+  $options['audio']['codec'] = "eac3";  // "aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none"
   $options['audio']['channels'] = 6;
   $options['audio']['bitrate'] = "720k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
   $options['audio']['quality_factor'] = 1.01; // give bit-rate some tollerance (384114 would pass okay for 384000)
@@ -307,6 +307,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   global $stats;
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
   $file = titlecase_filename($file, $options);
+
   if (
     !isset($file['extension']) ||
     !in_array(strtolower($file['extension']), $options['args']['extensions'])
@@ -315,6 +316,9 @@ function processItem($dir, $item, $options, $args, $stats) {
     return;
   }
   if ($options['args']['exclude']) {
+    $file = rename_byCodecs($file,$options);
+    $info = ffprobe($file, $options);
+    $file = rename_byCodecs($file,$options,$info['video']['width'],$info['video']['codec_name'],$info['audio']['codec_name']);
     $info = ffprobe($file, $options);
     if (empty($info)) {
       return;
@@ -561,6 +565,18 @@ function processItem($dir, $item, $options, $args, $stats) {
       $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['basename']), 0, false) . ")";
     }
     if (empty($reasons) || ($options['args']['force'])) {
+      if (file_exists($file['filename'] . $options['extension'])) {
+        $file = rename_byCodecs($file, $options);
+        ffprobe($file, $options);
+        touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
+        if (isset($options['args']['destination'])) {
+          //move file to destination path defined in (external_ini_file)
+          print "\033[01;32mMOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\033[0m\n";
+          rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
+          set_fileattr($file, $options);
+          titlecase_filename($file, $options);
+        }
+      }
       echo "================================================================================\n";
       echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . 
         formatBytes(filesize($fileorig['basename']), 2, true) . 
@@ -573,16 +589,6 @@ function processItem($dir, $item, $options, $args, $stats) {
       if (file_exists($fileorig['basename'])) {
         unlink($fileorig['basename']);
       } 
-      if (file_exists($file['filename'] . $options['extension'])) {
-        touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
-        if (isset($options['args']['destination'])) {
-          //move file to destination path defined in (external_ini_file)
-          print "\033[01;32mMOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\033[0m\n";
-          rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
-          set_fileattr($file, $options);
-          titlecase_filename($file, $options);
-        }
-      }
     }
     else {
       print "Rollback: " . $file['basename'] . " : ";
@@ -598,10 +604,13 @@ function processItem($dir, $item, $options, $args, $stats) {
           file_exists($fileorig['basename']) ) {
         unlink($file['basename']);
         rename($fileorig['basename'], $file['basename']);
-      }
-      if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
-        unlink("./.xml/" . $file['filename'] . ".xml");
+        $info = $inforig;
+        $file = rename_byCodecs($file, $options, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
         $options['args']['exclude'] = true;
+        if (file_exists("./.xml/" . $fileorig['filename'] . ".xml")) {
+          //Shouldn't exist, but if it does -- delete it
+          unlink("./.xml/" . $fileorig['filename'] . ".xml");
+        }
       }
     }
   }
@@ -878,7 +887,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     "duration-" . $options['args']['language'],
     "creation_date",
     "language",
-    "codec_name",
     "rotate",
     "_statistics_writing_app",
     "_statistics_writing_date_utc"
@@ -890,7 +898,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     "duration-" . $options['args']['language'],
     "creation_date",
     "language",
-    "codec_name",
     "channels",
     "sample_rate",
     "bit_rate",
@@ -993,6 +1000,7 @@ function ffprobe($file, $options) {
             $info['video']['index'] = getXmlAttribute($stream, "index");
             $info['video']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['video']['codec'] = getXmlAttribute($stream, "codec_name");
+            $info['video']['codec_name'] = getXmlAttribute($stream, "codec_name");
             $info['video']['pix_fmt'] = getXmlAttribute($stream, "pix_fmt");
             $info['video']['level'] = getXmlAttribute($stream, "level");
             $info['video']['width'] = getXmlAttribute($stream, "width");
@@ -1037,6 +1045,7 @@ function ffprobe($file, $options) {
             $info['audio']['title'] = getXmlAttribute($stream, "title");
             $info['audio']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['audio']['codec'] = getXmlAttribute($stream, "codec_name");
+            $info['audio']['codec_name'] = getXmlAttribute($stream, "codec_name");
             $info['audio']['channels'] = getXmlAttribute($stream, "channels");
             $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate");
             $info['audio']['bitrate'] = getXmlAttribute($stream, "bit_rate");
@@ -1084,6 +1093,7 @@ function ffprobe($file, $options) {
             $info['subtitle']['index'] = getXmlAttribute($stream, "index");
             $info['subtitle']['codec_type'] = getXmlAttribute($stream, "codec_type");
             $info['subtitle']['codec'] = getXmlAttribute($stream, "codec_name");
+            $info['subtitle']['codec_name'] = getXmlAttribute($stream, "codec_name");
           }
           break;
       }
@@ -1366,6 +1376,7 @@ function setOption($option) {
   $options['video']['codec'] = $option[3];
   $options['video']['pix_fmt'] = $option[4];
   $options['video']['codec_name'] = $option[5];
+  $options['video']['codec_long_name'] = $option[6];
   return($options);
 }
 
@@ -1374,6 +1385,47 @@ function strip_illegal_chars($file) {
     rename($file['dirname'] . "/" . $file['basename'], $file['dirname'] . "/" . str_replace("'", "", ($file['filename'])) . "." . $file['extension']);
     $file = pathinfo($file['dirname'] . "/" . str_replace("'", "", ucwords($file['filename'])) . "." . $file['extension']);
   }
+  return($file);
+}
+
+function rename_byCodecs($file, $options, $resolution=null, $acodec=null, $vcodec=null) {
+  $filename    = $file['filename'];
+  $filename_set = false;
+
+  $acodecs     = array('AC3', 'AAC', 'EAC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
+  $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265");
+  $resolutions = array('720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
+
+  $resolution  = isset($resolution) ?: set_resString($options['video']['scale']);
+  $vcodec      = isset($vcodec) ?: $options['video']['codec_long_name'];
+  $acodec      = isset($acodec) ?: $options['audio']['codec_long_name'];
+
+  if (preg_match("\(\d+\)$")) {
+      $filename = $file['filename'] . "_${resolution}.${vcodec} ${acodec}";
+      $filename_set = true;
+  }
+  if (!$filename_set) {
+    foreach ($resolutions as $res) {
+      if (preg_match("/$res/", $filename)) {
+        $filename = str_ireplace('/$res/',"$resolution",$filename);
+        break;
+      }
+    } 
+    foreach ($vcodecs as $vc) {
+      if (preg_match("/$vc/", $filename)) {
+        $filename = str_ireplace($vc,$vcodec,"$filename");
+        break;
+      }    
+    }
+    foreach ($acodecs as $ac) {
+      if (preg_match("/$ac/", $filename)) {
+        $filename = str_ireplace($ac,$acodec,"$filename");
+        break;
+      }        
+    }
+  }
+  rename($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $file['dirname'] . DIRECTORY_SEPARATOR . $filename . "." . $file['extension']);
+  $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $filename . "." . $file['extension']);
   return($file);
 }
 
@@ -1400,15 +1452,37 @@ function titlecase_filename($file, $options) {
     else {
       $title[] = $word;
     }
+  }
+
+  if (file_exists($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'])){
     $titlename = implode(' ', $title);
     rename($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $file['dirname'] . DIRECTORY_SEPARATOR . $titlename . "." . $file['extension']);
     $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $titlename . "." . $file['extension']);
-  }
-  if (file_exists($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'])){
     chgrp($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['group']);
     chmod($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['permissions']);
   }
   return($file);
+}
+
+function set_resString($scale) {
+  switch ($scale) {
+    case $scale <= 480:
+      $res = "480p";
+      break;
+    case $scale <= 720:
+      $res = "720p";
+      break;
+    case $scale <= 1080:
+      $res = "1080p";
+      break;
+    case $scale <= 1440:
+      $res = "1440p";
+      break;
+    case $scale <= 2160:
+      $res = "2160p";
+      break;
+  }
+  return($res);
 }
 
 function set_fileattr($file, $options) {
