@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240125.1033;
+$VERSION = 20240125.1325;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -183,12 +183,12 @@ if (count($argv) > 1) {
       if (!$args['index']) {
         $args['index'] = $i;
         if ($args['index'] > 1) {
-          exit("\n\033[01;31m  Invalid First Option: \"$arg $i\"\n\033[0m  Type $>\033[01;32m$application --help\n\033[0m");
+          exit(ansiColor("red") . "\n  Invalid First Option: \"$arg $i\"\n" . ansiColor() . "  Type $>" . ansiColor("blue") . "$application --help\n" . ansiColor());
         }
       }
     }
     elseif (preg_match('/^-/', $arg)) {
-      exit("\n\033[01;31m  Unknown option: \"$arg\"\n\033[0m  Type $>\033[01;32m$application --help\n\033[0m");
+      exit("\n".ansiColor("red")."  Unknown option: \"$arg\"\n".ansiColor()."  Type $>".ansiColor("green")."$application --help\n".ansiColor());
     }
     else {
       if (array_key_exists($arg, $options['locations'])) {
@@ -221,9 +221,9 @@ if (count($argv) > 1) {
     $dirs = array($args['key'] => $dir);
   }
   else {
-    print "\n\033[01;31mDefined Locations:\033[0m\n";
+    print "\n" . ansiColor("yellow") . "Defined Locations:" . ansiColor() . "\n";
     print_r($options['locations']);
-    exit("\033[01;31m  Unknown location: \"$argv[1]\"\n\033[01;32m  Edit \$options['locations'] to add it OR create and define external_paths_file.ini within the script.\033[0m");
+    exit(ansiColor("red") . "  Unknown location: \"$argv[1]\"\n" . ansiColor("green") . "  Edit \$options['locations'] to add it OR create and define external_paths_file.ini within the script." . ansiColor());
   }
 }
 else {
@@ -256,18 +256,18 @@ if (file_exists("$stop")) {
 foreach ($dirs as $key => $dir) {
   processRecursive($dir, $options, $args, $stats);
   if ($stats['processed']) {
-    print "\n\033[01;34m######################################\033[0m\n";
-    print "\033[01;34m#  Scanned Videos: \033[01;33m" . $stats['processed'] . "\033[0m\n";
+    print "\n" . ansiColor("blue") . "######################################\n" . ansiColor();
+    print ansiColor("blue") . "#  Scanned Videos: " . ansiColor("green") . $stats['processed'] . "\n" . ansiColor();
   }
   if ($stats['reEncoded']) {
-    print "\033[01;34m#  Re-Encoded    : \033[01;34m" . $stats['reEncoded'] . "\033[0m\n";
+    print ansiColor("blue") . "#  Re-Encoded    : " . ansiColor("green") . $stats['reEncoded'] . "\n" . ansiColor();
   }
   if ($stats['byteSaved']) {
-    print "\033[01;34m#  Space Saved   : \033[01;32m" . formatBytes($stats['byteSaved'], 0, true). "\033[0m\n";
+    print ansiColor("blue") . "#  Space Saved   : " . ansiColor("green") . formatBytes($stats['byteSaved'], 0, true). "\n" . ansiColor();
   }
   $totaltime = (time() - $stats['starttime']);
-  print "\033[01;34m#  Total Time    : \033[01;32m" . sprintf('%02d:%02d:%02d', ($totaltime/3600),($totaltime/60%60), $totaltime%60) . "\033[0m";
-  print "\n\033[01;34m######################################\033[0m\n";
+  print ansiColor("blue") . "#  Total Time    : " . ansiColor("green") . seconds_toTime("$totaltime") . "\n" . ansiColor();
+  print ansiColor("blue") . "######################################\n" . ansiColor();
 }
 
 /* ## ## ## STATIC FUNCTIONS ## ## ## */
@@ -314,7 +314,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     !isset($file['extension']) ||
     !in_array(strtolower($file['extension']), $options['args']['extensions'])
   ) {
-    print "\033[01;31" . $file['basename'] ." format is not configured to be supported.\033[0m\n";
+    print ansiColor("red") . $file['basename'] ." format is not configured to be supported.\n" . ansiColor();
     return;
   }
   if ($options['args']['exclude']) {
@@ -332,8 +332,8 @@ function processItem($dir, $item, $options, $args, $stats) {
   // Convert original "accepted" format to Matroska (mkv) 
   // acceptible formats configured in $options['args']['extensions']
   if ($file['extension'] !== "mkv") {
-    echo "\033[01;31m" . $file['filename'] . "." . $file['extension'] . "\033[0m\n";
-    echo "\033[01;34mContainer Convert: \033[01;31m" . $file['extension'] . "\033[01;34m => \033[01;32mmkv\033[0m\n";
+    echo ansiColor("red") . $file['filename'] . "." . $file['extension'] . "\n" . ansiColor();
+    echo ansiColor("blue") . "Container Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . "mkv\n" . ansiColor();
     // [quiet, panic, fatal, error, warning, info, verbose, debug]
     $subs = $file['extension'] === "mp4" ? "-sn " : ""; //Remove subs from mp4 files to prevent encoding issues
     $cmdln = "ffmpeg " . 
@@ -346,7 +346,7 @@ function processItem($dir, $item, $options, $args, $stats) {
              "-stats_period" . $options['args']['stats_period'] .
              "-y '" . $file['filename'] . "." . $options['args']['output_format'] . "'";
     if ($options['args']['verbose']) {
-      print "\033[01;32m$cmdln\033[0m\n";
+      print ansiColor("green") . "$cmdln\n" . ansiColor();
     }
     if (!$options['args']['test']) {
       exec("${cmdln}", $output, $status);
@@ -422,7 +422,7 @@ function processItem($dir, $item, $options, $args, $stats) {
           " --track-tags '" . $options['args']['language'] . "'" .
           " --output '" . $file['filename'] . ".mkvm' '" . $file['basename'] . "'";
         if ($options['args']['verbose']) {
-          print "\n\n\033[01;32m${cmdln}\033[0m\n";
+          print "\n\n". ansiColor("green") . "${cmdln}\n" . ansiColor();
         }
         system("${cmdln} 2>&1");
         if (file_exists($file['filename'] . ".mkvm")) {
@@ -509,10 +509,10 @@ function processItem($dir, $item, $options, $args, $stats) {
     "-stats_period 2 " .
     "-y \"" . $file['filename'] . ".hevc\"";
   if ($options['args']['verbose']) {
-    print "\n\n\033[01;32m${cmdln}\033[0m\n\n";
+    print "\n\n" . ansiColor("green") . "${cmdln}\n\n" . ansiColor();
   }
   if (!$options['args']['test']) {
-    print "\033[01;34mHEVC Encoding: \033[01;32m" . $file['basename'] . "\033[0m, runtime=" . seconds_toTime($info['format']['duration']) . "\n";    
+    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor() . ", runtime=" . seconds_toTime($info['format']['duration']) . "\n";
     exec("${cmdln}", $output, $status);
     if($status === 255) {
       //status(255) => CTRL-C    
@@ -575,17 +575,17 @@ function processItem($dir, $item, $options, $args, $stats) {
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination'])) {
           //move file to destination path defined in (external_ini_file)
-          print "\033[01;32mMOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\033[0m\n";
+          print ansiColor("green") . "MOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\n" . ansiColor();
           rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
           set_fileattr($file, $options);
           titlecase_filename($file, $options);
         }
       }
       echo "================================================================================\n";
-      echo "\033[01;34mSTAT: " . $file['filename'] . $options['extension'] . " ( " . 
+      echo ansiColor("blue") . "STAT: " . $file['filename'] . $options['extension'] . " ( " . 
         formatBytes(filesize($fileorig['basename']), 2, true) . 
         " [orig] - " . formatBytes($info['format']['size'], 2, true) . 
-        " [new] = \033[01;32m" . formatBytes(filesize($fileorig['basename']) - ($info['format']['size']), 2, true) . "\033[01;34m [diff] )\033[0m\n";
+        " [new] = " . ansiColor("green") . formatBytes(filesize($fileorig['basename']) - ($info['format']['size']), 2, true) . ansiColor("blue") . " [diff] )" . ansiColor();
       if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
         $stats['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
         $stats['reEncoded']++;
@@ -598,7 +598,7 @@ function processItem($dir, $item, $options, $args, $stats) {
       print "Rollback: " . $file['basename'] . " : ";
       print "  reason(s):";
       foreach ($reasons as $reason) {
-        print "\033[01;34m$reason\033[0m\n";
+        print ansiColor("blue") . "$reason\n" . ansiColor();
       }
       //conversion failed : Let's cleanup and exclude
       if (file_exists($file['filename'] . ".hevc")) {
@@ -628,7 +628,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
 
   if ($options['args']['cooldown'] > 0) {
-    print "\033[01;31mCooldown period: " . $options['args']['cooldown'] . " seconds. \033[0m\n";
+    print ansiColor("red") . "Cooldown period: " . $options['args']['cooldown'] . " seconds.\n" . ansiColor();
     sleep($options['args']['cooldown']);
   }
 
@@ -649,7 +649,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
 
   if ($info['format']['exclude'] && !$options['args']['override']) {
     if ($options['args']['verbose']) {
-      print "\033[01;35m " . $file['filename'] . "\033[01;31m Excluded! \033[0m  Delete .xml folder or use --override option to override.\n";
+      print ansiColor("magenta") . " " . $file['filename'] . ansiColor("red") . " Excluded! ". ansiColor() . "  Delete .xml folder or use --override option to override.\n";
     }
     $options = array();
     return($options);
@@ -696,11 +696,11 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   
     if (!preg_match("/copy/i", $options['args']['video'])) {
       $pf_key = array_search($info['video']['pix_fmt'], $options['args']['pix_fmts']);
-      print "\033[01;34mVideo Inspection ->\033[0m" .
+      print ansiColor("blue") . "Video Inspection ->" . ansiColor() .
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
         $info['video']['pix_fmt'] . "~=" . $options['args']['pix_fmts'][$pf_key] . "," .
         $info['video']['height'] . "<=" . $options['video']['scale'] . "," .
-        $info['video']['bitrate'] . "<=" . $options['video']['bps'] . "," . // give some tollerance
+        $info['video']['bitrate'] . "<=" . $options['video']['bps'] . "," . 
         $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
       list($ratio_w, $ratio_h) = explode(":", $info['video']['ratio']);
 
@@ -812,11 +812,11 @@ function ffanalyze($info, $options, $args, $dir, $file) {
           " -metadata:s:a:0 bps=" . $info['audio']['bps'] .
           " -metadata:s:a:0 title= ";
         if (!preg_match("/copy/i", $options['args']['video'])) {
-          print "\033[01;33mAudio Inspection ->\033[01;37mcopy\033[0m\n";
+          print ansiColor("yellow") . "Audio Inspection ->" . ansiColor() . "copy\n";
         }
       }
       else {
-        print "\033[01;34mAudio Inspection ->\033[0m" .
+        print ansiColor("blue") . "Audio Inspection ->" . ansiColor() .
           $info['audio']['codec'] . ":" . $options['audio']['codec'] . "," .
           $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "," .
           $info['audio']['channels'] . "ch<=" . $options['audio']['channels'] . "ch\n";
@@ -874,7 +874,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       $options['args']['map'] .= "-map 0:a? ";
     }
   } else {
-    print "\033[01;32mAudio Inspection ->\033[0m" .
+    print ansiColor("green") . "Audio Inspection ->" . ansiColor() .
     "info:missing\n";
   }
 
@@ -1109,7 +1109,7 @@ function ffprobe($file, $options) {
     !empty($info['video']) &&
     !empty($info['audio'])
   ) {
-    print "\033[01;34m${action}: \033[01;32m" . $file['basename'] . " \033[01;34m(";
+    print ansiColor("blue") . "${action}: " . ansiColor("green") . $file['basename'] . ansiColor("blue") . " (";
     if (!empty($info['video']) && !empty($info['video']['bitrate'])) {
       print $info['video']['codec_type'] . ":" . $info['video']['codec'] . ", " . $info['video']['width'] . "x" . $info['video']['height'] . ", " . formatBytes($info['video']['bitrate'], 2, false) . "PS | ";
     }
@@ -1119,7 +1119,7 @@ function ffprobe($file, $options) {
     if (!empty($info['subtitle'])) {
       print "SUB: " . $info['subtitle']['codec_type'] . ":" . $info['subtitle']['codec'];
     }
-    print "\033[01;34m)\033[0m\n";
+    print ansiColor("blue") . ")\n" . ansiColor();
   }
   elseif (
     (empty($info['video']) || empty($info['audio'])) && !$options['args']['test']
@@ -1132,7 +1132,7 @@ function ffprobe($file, $options) {
       if (empty($info['audio'])) {
         $missing += ' audio';
       }
-      print "\033[01;34m " . $file['filename'] . " $missing track is missing\033[0m\n";
+      print ansiColor("blue") . " " . $file['filename'] . " $missing track is missing\n" . ansiColor();
       print "Delete " . $file['basename'] . "?  [Y/n] >";
     }
     if (!$options['args']['exclude'] && !$options['args']['test']) {
@@ -1207,11 +1207,12 @@ function getTagParent($attr) {
 function getCommandLineOptions($options, $args) {
 
 //COMMAND LINE OPTIONS
-  $help = "
-  \033[01;31mcommand [options] [file|key]  // options and flags before file or defined key
-  \033[01;33me.g.   $>" . $args['application'] . " --test MediaFileName.mkv
-  \033[01;33me.g.   $>" . $args['application'] . " --keeporiginal tv
-  \033[01;32mBOOLS (Default false)\033[01;34m
+  $help = 
+  ansiColor("white") . "command [options] [file|key]  // options and flags before file or defined key\n" .
+  ansiColor("yellow") . "e.g.   $>" . $args['application'] . " --test MediaFileName.mkv\n" .
+  ansiColor("yellow") . "e.g.   $>" . $args['application'] . " --keeporiginal tv\n\n" . 
+  ansiColor("green") . "BOOLS (Default false)" .
+  ansiColor("blue") . "
   --verbose    :flag:        display verbose output
   --test          :flag:        print out ffmpeg generated command line only -- and exit
   --yes           :flag:        answer yes to any prompts
@@ -1222,9 +1223,10 @@ function getCommandLineOptions($options, $args) {
   --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
   --keeporiginal  :flag:        keep the original file and save as filename.orig.ext
   --keepowner     :flag:        keep the original file owner for the newly created file
-  --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language
+  --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language\n\n" .
 
-  \033[01;32mPARMS (Default * denoted) i.e.  --language=eng \033[01;34m
+  ansiColor("green") . "PARMS (Default * denoted) i.e.  --language=eng" .
+  ansiColor("blue") . "
   --language      :pass value:  manual set at command-line Use 3 letter lang codes. (*eng, fre, spa, etc.. etc..)
   --abitrate      :pass value:  set audio bitrate manually. Use rates compliant with configured audio codec 128k, 192k, 256k, *384k, 512k
   --acodec        :pass value:  set audio codec manually.  (*aac, ac3, libopus, mp3, etc... | none)
@@ -1236,8 +1238,8 @@ function getCommandLineOptions($options, $args) {
   --fps           :pass value:  set frames per second (23.97, 24, *29.97, 30, 60, 120, etc)
   --scale         :pass value:  set the the downsize resolution height. Aspect auto retained. (480, 720, 1080, *2160, 4320, etc) WILL NOT UPSCALE!
   --quality       :pass value:  set the quality factor (0.5 => low, 1.0 => normal, 2.0 => high) *default 1.29
-  --permissions   :pass value:  set the file permission
-  \033[0m";
+  --permissions   :pass value:  set the file permission" .
+  ansiColor();
 
 
   $cmd_ln_opts = getopt(null, $options['args']['cmdlnopts'], $args['index']);
@@ -1247,8 +1249,8 @@ function getCommandLineOptions($options, $args) {
     exit;
   }
   if (array_key_exists("keys", $cmd_ln_opts)) {
-    print "\n\033[01;32mDefined Keys in \033[01;34mhevc_paths.ini\033[0m";
-    print "\n\033[01;31mDefined Locations:\033[0m\n";
+    print ansiColor("green") . "\nDefined Keys in " . ansiColor("blue") . "hevc_paths.ini\n" . ansiColor();
+    print ansiColor("red") . "Defined Locations:\n" . ansiColor();
     print_r($options['locations']);
     exit;
   }
@@ -1363,7 +1365,7 @@ function cleanXMLDir($dir, $options) {
           $xfile = pathinfo($xmlfile);
           $mediafile = str_replace("'", "\'", $xfile['filename']) . $options['extension'];
           if (!empty($xmlfile) && !file_exists("$mediafile") && file_exists("./.xml" . DIRECTORY_SEPARATOR . "${xmlfile}")) {
-            print "\033[01;34mCleaned XML for NonExists: $dir" . DIRECTORY_SEPARATOR . $mediafile . "\033[0m\n";
+            print ansiColor("blue") . "Cleaned XML for NonExists: $dir" . DIRECTORY_SEPARATOR . $mediafile . "\n" . ansiColor();
             unlink("./.xml" . DIRECTORY_SEPARATOR . $xmlfile);
           }
         }
@@ -1399,7 +1401,7 @@ function rename_byCodecs($file, $options, $resolution=null, $acodec=null, $vcode
   $resolutions = array('480p', '720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
   $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265", "vc1", "hevc");
   $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
-  $profiles    = array('Raw-HD', 'BR-Disk', 'Remux', 'Bluray', 'WebDL', 'WebRip', 'HDTV');
+  $profiles    = array('Raw-HD', 'BR-Disk', 'Remux', 'Bluray', 'WebDL', 'WebRip', 'HDTV');  // Radarr Quality Profiles
 
   $resolution  = isset($resolution) ?: set_resString($options['video']['scale']);
   $vcodec      = isset($vcodec) ?: $options['video']['codec_long_name'];
@@ -1513,4 +1515,24 @@ function seconds_toTime($seconds) {
     $seconds = sprintf('%02d:%02d:%02d', ($seconds/3600),($seconds/60%60), $seconds%60);
   }
   return($seconds);
+}
+
+function ansiColor($color=null) {
+  $colors = array(
+    "black"   => 0,
+    "red"     => 1,
+    "green"   => 2,
+    "yellow"  => 3,
+    "blue"    => 4,
+    "magenta" => 5,
+    "cyan"    => 6,
+    "white"   => 7
+  );
+
+  $ansi = "\033[0m";
+  if (isset($color)) {
+    $ansi = "\033[01;3" . $colors[$color] . "m";
+  }
+
+  return("$ansi");
 }
