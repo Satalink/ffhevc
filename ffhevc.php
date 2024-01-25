@@ -1,6 +1,6 @@
 #!/usr/bin/php
 <?php
-$VERSION = 20240124.1842;
+$VERSION = 20240125.1033;
 
 //Initialization and Command Line interface stuff
 $self = explode('/', $_SERVER['PHP_SELF']);
@@ -97,6 +97,7 @@ function getDefaultOptions($args) {
   $options['video']['hdr']['color_primary'] = array("bt601|","bt709","bt2020");
   $options['video']['hdr']['color_transfer'] = array("bt601","bt709","smpte2084");
   $options['video']['hdr']['color_space'] = array("bt601","bt709","bt2020nc");
+  $options['video']['profile'] = 'webdl'; //Used for filenaming after encoding
   $options['audio']['codecs'] = array("ac3", "eac3");   //("aac", "ac3", "libopus", "mp3") allow these codecs : $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
   $options['audio']['codec'] = "eac3";  // "aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none"
   $options['audio']['channels'] = 6;
@@ -110,6 +111,7 @@ function getDefaultOptions($args) {
   $options['args']['extensions'] = array("mkv", "mp4", "mpeg", "ts", "m2ts", "avi");
   $options['args']['verbose'] = false;
   $options['args']['test'] = false;
+  $options['args']['stats_period'] = "0.1";  // ffmpeg stats reporting frequency in seconds
   $options['args']['yes'] = false;
   $options['args']['keys'] = false;
   $options['args']['force'] = false;
@@ -341,6 +343,7 @@ function processItem($dir, $item, $options, $args, $stats) {
              "-c copy " .
              "$subs" .
              "-stats " .
+             "-stats_period" . $options['args']['stats_period'] .
              "-y '" . $file['filename'] . "." . $options['args']['output_format'] . "'";
     if ($options['args']['verbose']) {
       print "\033[01;32m$cmdln\033[0m\n";
@@ -503,6 +506,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     $options['args']['map'] . " " .
     $options['args']['meta'] . " " .
     "-stats " .
+    "-stats_period 2 " .
     "-y \"" . $file['filename'] . ".hevc\"";
   if ($options['args']['verbose']) {
     print "\n\n\033[01;32m${cmdln}\033[0m\n\n";
@@ -1388,38 +1392,46 @@ function strip_illegal_chars($file) {
   return($file);
 }
 
-function rename_byCodecs($file, $options, $resolution=null, $acodec=null, $vcodec=null) {
+function rename_byCodecs($file, $options, $resolution=null, $acodec=null, $vcodec=null, $profile=null) {
   $filename    = $file['filename'];
   $filename_set = false;
 
-  $acodecs     = array('AC3', 'AAC', 'EAC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
-  $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265");
-  $resolutions = array('720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
+  $resolutions = array('480p', '720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
+  $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265", "vc1", "hevc");
+  $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
+  $profiles    = array('Raw-HD', 'BR-Disk', 'Remux', 'Bluray', 'WebDL', 'WebRip', 'HDTV');
 
   $resolution  = isset($resolution) ?: set_resString($options['video']['scale']);
-  $vcodec      = isset($vcodec) ?: $options['video']['codec_name'];
+  $vcodec      = isset($vcodec) ?: $options['video']['codec_long_name'];
   $acodec      = isset($acodec) ?: $options['audio']['codec'];
+  $profile     = isset($profile) ?: $options['video']['profile'];
 
-  if (preg_match("/\(\d+\)$/", $filename)) {
-      $filename = $file['filename'] . "_${resolution}.${vcodec} ${acodec}";
+  if (preg_match("/\([1-2]\d{3}\)$/", $filename)) {
+      $filename = $file['filename'] . ".${resolution}.${vcodec}.${acodec}";
       $filename_set = true;
   }
   if (!$filename_set) {
+    foreach ($profiles as $pf) {
+      if (preg_match("/$pf/i", $filename)) {
+        $filename = str_ireplace($pf, "$profile", "$filename");
+        break;
+      }
+    }
     foreach ($resolutions as $res) {
       if (preg_match("/$res/i", $filename)) {
-        $filename = str_ireplace('/$res/',"$resolution",$filename);
+        $filename = str_ireplace($res, "$resolution", $filename);
         break;
       }
     } 
     foreach ($vcodecs as $vc) {
       if (preg_match("/$vc/i", $filename)) {
-        $filename = str_ireplace($vc,$vcodec,"$filename");
+        $filename = str_ireplace($vc, "$vcodec", "$filename");
         break;
       }    
     }
     foreach ($acodecs as $ac) {
       if (preg_match("/$ac/i", $filename)) {
-        $filename = str_ireplace($ac,$acodec,"$filename");
+        $filename = str_ireplace($ac, "$acodec", "$filename");
         break;
       }        
     }
