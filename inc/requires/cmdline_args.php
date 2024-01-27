@@ -36,13 +36,13 @@ function get_CommandLineArgs($options, $argv, $args, $stats) {
     //Single File Processing
     if (!empty($file)) {
       $options = getLocationOptions($options, $args, $file['dirname']);
-      processItem($file['dirname'], $file['basename'], $options, $args, $stats);
-      return array($options, $args, null, $stats);
+      $stats = processItem($file['dirname'], $file['basename'], $options, $args, $stats);
+      showStats($stats);
+      exit;
     }
 
     //Defined Key Scan and Process
     if (isset($args['key'])) {
-var_dump($args);      
       $location = str_replace(" ", "\ ", $options['locations'][$args['key']]);
       $key = $args['key'];
       $dirs["$key"] = explode("|", $location)[0];

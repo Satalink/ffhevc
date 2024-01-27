@@ -11,6 +11,8 @@ function processItem($dir, $item, $options, $args, $stats) {
   $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
   $file = titlecase_filename($file, $options);
 
+  checkProcessCount($args, $options);   //Don't melt my CPU!
+  
   if (
     !isset($file['extension']) ||
     !in_array(strtolower($file['extension']), $options['args']['extensions'])
