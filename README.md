@@ -3,16 +3,16 @@
 ## Table of Contents
 
 - [About](#about)
-- [How Used](#how_used)
+- [Usage](#usage)
 - [Getting Started](#getting_started)
-- [Examples]($examples)
-- [Contributing](../CONTRIBUTING.md)
+- [Examples](#examples)
+- [Contribute](../CONTRIBUTING.md)
 
 ## About <a name = "about"></a>
 
 FFhevc uses FFmpeg and FFprobe to convert to, anaylize, and re-encode mkv videos.  It allows you to configure maximum qaulity and resolution per media directory.  Optionally, It can process incoming files and move them to their destination directory once re-encoded.  If you have mkvmerge installed, FFhevc will use it to filter out unwanted tracks such as foreign language and director comment tracks.  
 
-### Usage <a name = "how_used"></a>
+### Usage <a name = "usage"></a>
 
 If you have a movies, movie archive, tv shows, tv show archive setup, you can set up ffhevc cronjobs to scan each media directory for videos that are above your quality/resolution set limits.  FFhevc will re-encode them according to your configuration settings per media directory.
 
@@ -45,12 +45,12 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
 
   > ffhevc.php
   
-  Run in a media directory without any options or paths to scan and process the current working directory.  If there is a key defined in the conf/media_paths_keys.php file, those settings will be used.  Otherwise, global defaults defined in the inc/requires/options.php file will be used.
+  Run in a media directory without any options or paths to scan and process the current working directory.  If there is a key defined in the conf/media_paths_keys.php file that matches your current working directory, those settings will be used.  Otherwise, global defaults defined in the inc/requires/options.php file will be used.
 
   > ffhevc.php "My Favorite Video.mkv"
 
-  If you supply a filename, that file will be scanned and processed (no recurssive directory scanning or processing).
+  If you supply a filename, that file will be scanned and processed (no recurssive directory scanning or processing).  If a key is defined that matches your current working directory, those settings will be used.  Otherwise, global defaults defined inc/requires/options.php file will be used.
 
   > ffhevc.php mov
 
-  If you supply a "key" (defined in conf/media_paths_keys.php), the path defined in that key will be scanned and processed.
+  If you supply a "key" (defined in conf/media_paths_keys.php), the path defined in that key will be scanned and processed using the settings defined for that key.
