@@ -12,7 +12,6 @@ function getLocationOptions($options, $args, $dir) {
   }
 
   foreach ($options['locations'] as $key => $location) {
-
     $esc_pattern = str_replace("/", "\/", explode("|", $location)[0]);
     if (preg_match("/$esc_pattern/", $dir)) {
       $options['args']['key'] = $args['key'] = $key;
