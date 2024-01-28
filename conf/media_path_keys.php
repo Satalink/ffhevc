@@ -25,30 +25,13 @@
 // CONFIGURE TO YOUR MEDIA DIRECTORY NEEDS - Use above value descriptions for reference
 # "keyname" => "path|audioCh|audioK|vmin|vmax|quality_factor|scale|fps|contrast|brightness|saturation|gamma(|optional/destination)
 $location_config = array(
-  "gopro" => "/cygdrive/i/Videos/GoPro|2|128k|10|32|1.29|720|30|1.07|0.02|1.02|0.95|/cygdrive/i/Videos/Archive",
-  "dashcam" => "/cygdrive/i/Videos/Dashcam|2|192k|7|37|1.0|1080|25|1|0|1|1",
-  "archive" => "/cygdrive/i/Videos/Archive|6|96k|10|38|0.9|720|25|1|0|1|1",
-  "tv" => "/cygdrive/e/TV_Shows|2|256k|1|36|1.29|1080|25|1|0|1|1",
-  "atv" => "/cygdrive/i/TV_Shows|2|192k|1|36|1.11|1080|25|1|0|1|1",
-  "temp" => "/cygdrive/f/Temp/30day|6|640k|1|33|1.33|2160|30|1|0|1|1",
+  "gopro" => "/cygdrive/i/Videos/GoPro|2|128k|1|33|1.29|720|30|1.07|0.02|1.02|0.95|/cygdrive/i/Videos/Archive",
+  "dashcam" => "/cygdrive/i/Videos/Dashcam|2|192k|1|33|1.0|1080|25|1|0|1|1",
+  "archive" => "/cygdrive/i/Videos/Archive|6|96k|1|33|0.9|720|25|1|0|1|1",
+  "tv" => "/cygdrive/e/TV_Shows|2|256k|1|33|1.29|1080|25|1|0|1|1",
+  "atv" => "/cygdrive/i/TV_Shows|2|192k|1|33|1.11|1080|25|1|0|1|1",
+  "temp" => "/cygdrive/f/Temp/30day|6|640k|1|33|1.29|2160|30|1|0|1|1",
   "mov" =>  "/cygdrive/f/Movies|6|640k|1|33|1.33|2160|30|1|0|1|1",
   "amov" => "/cygdrive/g/Movies|2|256k|1|33|1.29|1080|30|1|0|1|1",
   "xmas" => "/cygdrive/g/Christmas_Movies|2|256k|1|33|1.33|2160|30|1|0|1|1",
   );
-
-
-/****  DO NOT EDIT BELOW HERE ****/
-$locLabels = array(
-  // This is static -- DO NOT CHANGE
-  "path","audioCh","audioK","vmin","vmax","quality_factor","scale","fps","contrast","brightness","saturation","gamma","destination"
-);
-$locations = array();
-foreach ($location_config as $key => $locConf) {
-  $i = 0;
-  $locVals = explode("|", $locConf);
-  $locations["$key"] = array();
-  foreach ($locVals as $locVal) {
-    $locations["$key"]["$locLabels[$i]"] = "$locVal";
-    $i++;
-  }
-}

@@ -5,13 +5,9 @@
  *  purpose: construct the application options array
  * 
  */
-function getDefaultOptions($args) {
+function getDefaultOptions($args, $location_config) {
   $options = array();
-  $options['locations'] = array();
-  if (isset($args['locations'])) {
-    $options['locations'] = $args['locations'];
-  }
-  
+  $options['locations'] = $location_config;  
   $option = $args['opt'][$args['my_config']];
   $options = array_merge($options, setOption($option));
 

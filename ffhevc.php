@@ -1,11 +1,8 @@
-#!/usr/bin/php
+#!/usr/bin/env php
 <?php
-$VERSION = 20240127.1354;
+$VERSION = 20240128.1721;
 
 // Init Stuff
-
-$HOME = getenv("HOME");
-$self = explode(DIRECTORY_SEPARATOR, $_SERVER['PHP_SELF']);
 $dirs = array();
 $cleaned = array();
 $stats = array(
@@ -28,7 +25,10 @@ foreach ($includeDirs as $includeDir) {
   }
 }
 
-$options = getDefaultOptions($args);  //Initialize options
+$self = explode(DIRECTORY_SEPARATOR, $_SERVER['PHP_SELF']);
+$args['application'] = end($self);
+$options = getDefaultOptions($args, $location_config);  //Initialize options
+
 list($options, $args, $dirs) = get_CommandLineArgs($options, $argv, $args, $stats);
 checkProcessCount($args, $options);   //Don't melt my CPU!
 
