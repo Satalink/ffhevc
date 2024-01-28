@@ -1,6 +1,6 @@
 #!/usr/bin/env php
 <?php
-$VERSION = 20240128.1658;
+$VERSION = 20240128.1721;
 
 // Init Stuff
 $dirs = array();
