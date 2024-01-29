@@ -8,7 +8,7 @@
 
 
 function processItem($dir, $item, $options, $args, $stats) {
-  $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"));
+  $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"), $options);
   $file = titlecase_filename($file, $options);
 
   checkProcessCount($args, $options);   //Don't melt my CPU!
@@ -22,9 +22,9 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
   if ($options['args']['exclude']) {
     //TODO Verify this code
-    $info = ffprobe($file, $options);
+    list($file, $info) = ffprobe($file, $options);
     if (!empty($info)) {
-      $file = rename_byCodecs($file,$options,$info['video']['width'],$info['video']['codec_name'],$info['audio']['codec_name']);
+      $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
       setXmlFormatAttribute($file, "exclude");
     }
     return($stats);
@@ -61,7 +61,7 @@ function processItem($dir, $item, $options, $args, $stats) {
         unlink($file['basename']);
         $mkv_filename = $mkv_file['filename'] . ".mkv";
         touch($mkv_filename, $mtime); //retain original timestamp
-        $info = ffprobe($mkv_file, $options);            
+        list($file, $info) = ffprobe($mkv_file, $options);            
         $options = ffanalyze($info, $options, $args, $dir, $mkv_file);
         if (empty($options)) {
           return($stats);
@@ -83,7 +83,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   $options['info']['title'] = "'" . str_replace("'", "\'", $file['filename']) . "'";
   $options['info']['timestamp'] = date("Ymd.His");
 
-  $info = ffprobe($file, $options);
+  list($file, $info) = ffprobe($file, $options);
   if (empty($info)) {
     return($stats);
   }
@@ -129,7 +129,7 @@ function processItem($dir, $item, $options, $args, $stats) {
           unlink($file['basename']);
           rename($file['filename'] . $mkvmerge_temp_file, $file['filename'] . ".mkv");
           touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
-          $info = ffprobe($file, $options);
+          list($file, $info) = ffprobe($file, $options);
           setXmlFormatAttribute($file, "mkvmerged");
           $options = ffanalyze($info, $options, $args, $dir, $file);
           if (empty($options)) {
@@ -242,7 +242,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   if (file_exists($file['basename'])) {
     set_fileattr($file, $options);
     $inforig = $info;
-    $info = ffprobe($file, $options);
+    list($file, $info) = ffprobe($file, $options);
   }
   if (empty($info)) {
     return($stats);
@@ -269,8 +269,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     }
     if (empty($reasons) || ($options['args']['force'])) {
       if (file_exists($file['filename'] . $options['extension'])) {
-        ffprobe($file, $options);
-        $file = rename_byCodecs($file, $options);
+        list($file, $info) = ffprobe($file, $options);
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination'])) {
           //move file to destination path defined in (external_ini_file)
@@ -309,7 +308,7 @@ function processItem($dir, $item, $options, $args, $stats) {
         unlink($file['basename']);
         rename($fileorig['basename'], $file['basename']);
         $info = $inforig;
-        // $file = rename_byCodecs($file, $options, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
+        $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
         $options['args']['exclude'] = true;
         if (file_exists("./.xml/" . $fileorig['filename'] . ".xml")) {
           //Shouldn't exist, but if it does -- delete it
@@ -320,7 +319,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
 
   if ($options['args']['exclude']) {
-    $info = ffprobe($file, $options);
+    list($file, $info) = ffprobe($file, $options);
     if (empty($info)) {
       return($stats);
     }

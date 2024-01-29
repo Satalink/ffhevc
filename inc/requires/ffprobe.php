@@ -10,38 +10,35 @@
 
 function ffprobe($file, $options) {
   $exec_args = "-v quiet -print_format xml -show_format -show_streams";
-  $basename = $file['basename'];
-  $filename = $file['filename'];
-  $language = $options['args']['language'];
   $info = array();
-  $xmlfile = $filename . '.xml';
   $xml = null;
   if (!file_exists("./.xml")) {
     mkdir("./.xml");
   }
-  if (!file_exists("./.xml/$xmlfile")) {
+  if (!file_exists("./.xml/" . $file['filename'] . ".xml")) {
     $action = "PROBED";
-    $cmdln = "ffprobe $exec_args '$basename' > './.xml/$xmlfile'";
+    $cmdln = "ffprobe $exec_args '". $file['basename'] . "' > './.xml/" . $file['filename'] . ".xml'";
     $result = exec("$cmdln");
-    if (!file_exists("./.xml/$xmlfile")) {
-      exit("error: Could not create ffprobe xml.  Check that ffprobe is exists, is executable, and in the system search path\n");
+    if (!file_exists("./.xml/" . $file['filename'] . ".xml")) {
+      print ansiColor("red") . "error: Could not create ffprobe xml.  Check that ffprobe is exists, is executable, and in the system search path\n" . ansiColor();
+      return(array($file, $options));
     }
   }
   else {
     $action = "INFO";
   }
-  if (file_exists("./.xml/" . $filename . ".xml")) {
-    $xml = simplexml_load_file("./.xml/$filename.xml");
+  if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
+    $xml = simplexml_load_file("./.xml/" . $file['filename'] . ".xml");
     $xml_filesize = getXmlAttribute($xml->format, "size");
   }
   if (!isset($xml) ||
     empty($xml) ||
-    (!empty($xml_filesize) && (int) $xml_filesize != filesize($basename))
+    (!empty($xml_filesize) && (int) $xml_filesize != filesize($file['basename']))
   ) {
     print "Stale xml detected.  Initiating new probe...\n";
     unlink("./.xml/" . $file['filename'] . ".xml");
-    $info = ffprobe($file, $options);
-    $xml = simplexml_load_file("./.xml/$filename.xml");
+    list($file, $info) = ffprobe($file, $options);
+    $xml = simplexml_load_file("./.xml/" . $file['filename']  . ".xml");
   }
   $info = array();
   $info['format']['format_name'] = getXmlAttribute($xml->format, "format_name");
@@ -215,6 +212,6 @@ function ffprobe($file, $options) {
       $info = array();
     }
   }
-//  var_dump($info);exit;
-  return($info);
+  
+  return(array($file, $info));
 }

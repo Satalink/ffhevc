@@ -46,6 +46,7 @@ function getDefaultOptions($args, $location_config) {
   $options['audio']['max_streams'] = 1;  //Maximum number of audio streams to keep
 
   $options['args']['output_format'] = "mkv";
+  $options['args']['dot2space'] = isset($args['opt2space']) ?: false;  
   $options['args']['extensions'] = array("mkv", "mp4", "mpeg", "ts", "m2ts", "avi");
   $options['args']['verbose'] = false;
   $options['args']['test'] = false;

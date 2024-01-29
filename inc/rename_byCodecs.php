@@ -5,7 +5,7 @@
  *  purpose: Renames media file with new codecs after encoding
  */
 
-function rename_byCodecs($file, $options, $resolution=null, $acodec=null, $vcodec=null, $profile=null) {
+function rename_byCodecs($file, $options, $info, $resolution=null, $acodec=null, $vcodec=null, $profile=null) {
   $filename    = $file['filename'];
 
   $resolutions = array('480p', '720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
@@ -13,7 +13,7 @@ function rename_byCodecs($file, $options, $resolution=null, $acodec=null, $vcode
   $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
   $profiles    = array('Raw-HD', 'BR-Disk', 'Remux', 'Bluray', 'WebDL', 'WebRip', 'HDTV');  // Radarr Quality Profiles
 
-  $resolution  = isset($resolution) ?: set_resString($options['video']['scale']);
+  $resolution  = isset($resolution) ?: set_resString($info['video']['height']);
   $vcodec      = isset($vcodec) ?: $options['video']['codec_long_name'];
   $acodec      = isset($acodec) ?: $options['audio']['codec'];
   $profile     = isset($profile) ?: $options['video']['profile'];

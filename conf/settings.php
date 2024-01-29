@@ -5,13 +5,14 @@
  * view inc_requires/options.php for more detailed option settings
  */
 
-// Configuration Stuff
 $args = array(
+  // Configuration Settings
   "max_processes" => 1,  // maximum number of instances this application can run
   "stop" => "/tmp/hevc.stop", //if this file exists the process will exist after finished with the current file
-
-  // Import your media path configs
   "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php",
+  "dot2space" => false,  // Replace dots with spaces in the title portion of the filename.
+                         //  eg.  movie.title.1999.Bluray.h264.ac3.mkv
+                         //  to:  Movie Title (1999).webdl.x265.eac3.mkv
 
   "my_config" => 'hevc-nvenc-mkv', // Map to the "opt" configuration below
   /* 
