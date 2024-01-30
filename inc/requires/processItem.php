@@ -8,7 +8,7 @@
 
 
 function processItem($dir, $item, $options, $args, $stats) {
-  $file = strip_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"), $options);
+  $file = remove_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"), $options);
   $file = titlecase_filename($file, $options);
 
   checkProcessCount($args, $options);   //Don't melt my CPU!
@@ -109,7 +109,7 @@ function processItem($dir, $item, $options, $args, $stats) {
        if ( !$info['format']['mkvmerged'] ||
            $options['args']['force']
        ) {
-          $mkvmerge_temp_file = "_mkvmerge" . "." . $file['extension'];
+          $mkvmerge_temp_file =  $file['extension'] . "." . "merge";
           $cmdln = "mkvmerge" .
           " --language 0:" . $options['args']['language'] .
           " --language 1:" . $options['args']['language'] .
@@ -271,12 +271,10 @@ function processItem($dir, $item, $options, $args, $stats) {
       if (file_exists($file['filename'] . $options['extension'])) {
         list($file, $info) = ffprobe($file, $options);
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
-        if (isset($options['args']['destination'])) {
+        if (isset($options['args']['destination']) && file_exists($options['args']['destination'] . DIRECTORY_SEPARATOR)) {
           //move file to destination path defined in (external_ini_file)
           print ansiColor("green") . "MOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\n" . ansiColor();
           rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
-          set_fileattr($file, $options);
-          titlecase_filename($file, $options);
         }
       }
       echo "================================================================================\n";
