@@ -25,9 +25,10 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
   <li>php 7.4+</li>
   <li><a href="https://ffmpeg.org/download.html" target=_blank>FFmpeg</a></li>
   <li>ffprobe (included in FFmpeg install)</li>
-  <li><a href="https://www.matroska.org/downloads/mkvtoolnix.html" target=_blank>mkvmerg</a> (optional but recommeneded)</li>
+  <li><a href="https://www.matroska.org/downloads/mkvtoolnix.html" target=_blank>mkvmerge</a> (optional but recommeneded)</li>
 </ul>
 
+*** ffmpeg, ffprobe, and mkvmerge must be in your terminal's $PATH ***
 
 ### Installing
 
