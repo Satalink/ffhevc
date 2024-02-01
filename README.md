@@ -42,14 +42,14 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
 
 ### Usage <a name = "examples"></a>
 
-  > ffhevc.php
+  > $> ffhevc.php
   
   Run in a media directory without any options or paths to scan and process the current working directory.  If there is a key defined in the conf/media_paths_keys.php file that matches your current working directory, those settings will be used.  Otherwise, global defaults defined in the inc/requires/options.php file will be used.
 
-  > ffhevc.php "My Favorite Video.mkv"
+  > $> ffhevc.php "My Favorite Video.mkv"
 
   If you supply a filename, that file will be scanned and processed (no recurssive directory scanning or processing).  If a key is defined that matches your current working directory, those settings will be used.  Otherwise, global defaults defined inc/requires/options.php file will be used.
 
-  > ffhevc.php mov
+  > $> ffhevc.php mov
 
   If you supply a "key" (defined in conf/media_paths_keys.php), the path defined in that key will be scanned and processed using the settings defined for that key.
