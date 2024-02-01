@@ -5,10 +5,12 @@
  * view inc_requires/options.php for more detailed option settings
  */
 $args = array(
+  // conf file that contains your media directroy ffenc encoding settings
+  "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php",  
 
   // Configuration Settings
   "max_processes" => 1,       // maximum number of instances this application can run
-  "stop" => "/tmp/hevc.stop", // If this file exists the process will exist after finished with the current file
+  "stop" => "/tmp/hevc.stop", // If this file exists the process will exist after finishing with the current file
   
   "rename" => true,           
                               // Rename files to standard filenaming specification
@@ -35,11 +37,10 @@ $args = array(
     "H264-nvenc-mkv"  => array("main10", "matroska", ".mp4", "h264_nvenc", "p010le", "hevc", "x264"),
     "hevc-nvenc-mkv"  => array("main10", "matroska", ".mkv", "hevc_nvenc", "yuv420p10le", "hevc", "x265"),
   ),
-
-  // If you have ffhevc on a portable thumbdrive and need separate configs, you can define which 
-  // media_path_keys file is loaded here.
-  "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php",
-  
 );
-
-require_once $args['media_paths_file'];
+if (file_exists($args['media_paths_file'])) {
+  require_once $args['media_paths_file'];
+} else {
+  print $args['medeia_paths_file'] . " not found.\n" .
+  "Please copy the example and configure it for your media directories.\n"
+}
