@@ -34,4 +34,4 @@ $self = explode(DIRECTORY_SEPARATOR, $_SERVER['PHP_SELF']);
 $lastkey = key(array_slice($self, -1, 1, true));
 $args['application'] = $self[$lastkey];
 list($options, $args, $dirs) = get_CommandLineArgs($options, $argv, $args, $stats);
-checkProcessCount($args, $options);   //Don't melt my CPU!
+checkProcessCount($args, $options, $stats);   //Don't melt my CPU!

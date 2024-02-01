@@ -9,7 +9,7 @@
 
 function processItem($dir, $item, $options, $args, $stats) {
   $file = remove_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"), $options);
-  checkProcessCount($args, $options);   //Don't melt my CPU!
+  checkProcessCount($args, $options, $stats);   //Don't melt my CPU!
   
   // Exclusions
   if (
@@ -51,11 +51,11 @@ function processItem($dir, $item, $options, $args, $stats) {
     if ($options['args']['verbose']) {
       print ansiColor("green") . "$cmdln\n" . ansiColor();
     }
-    if (!$options['args']['test']) {
+    if (!$options['args']['test'] && !isset($stats['stop'])) {
       exec("$cmdln", $output, $status);
-      if($status === 255) {
+      if ($status == 255) {
         //status(255) => CTRL-C    
-        exit;
+        $stats = stop($args, $stats);
       }
       if (file_exists($file['filename'] . ".mkv")) {
         $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".mkv");
@@ -120,7 +120,13 @@ function processItem($dir, $item, $options, $args, $stats) {
         if ($options['args']['verbose']) {
           print "\n\n". ansiColor("green") . "$cmdln\n" . ansiColor();
         }
-        system("$cmdln 2>&1");
+        system("$cmdln 2>&1", $status);
+        if ($status == 255) {
+          //status(255) => CTRL-C    
+          touch($args['stop']);
+          $stats['stop'] = true;
+        }
+
         if (file_exists($file['filename'] . $mkvmerge_temp_file)) {
           $mtime = filemtime($file['basename']);
           unlink($file['basename']);
@@ -211,8 +217,11 @@ function processItem($dir, $item, $options, $args, $stats) {
     print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor() . ", runtime=" . seconds_toTime($info['format']['duration']) . "\n";
     exec("$cmdln", $output, $status);
     if($status === 255) {
-      //status(255) => CTRL-C    
-      exit;
+      if ($status == 255) {
+        //status(255) => CTRL-C    
+        touch($args['stop']);
+        $stats['stop'] = true;
+      }
     }
   }
 

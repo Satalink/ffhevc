@@ -12,7 +12,10 @@ function seconds_toTime($seconds) {
   return($seconds);
 }
 
-function checkProcessCount($args, $options) {
+function checkProcessCount($args, $options, $stats) {
+  if(isset($stats['stop'])) {
+    exit;
+  }
   exec("ps -efW|grep -v grep|grep ffmpeg|wc -l", $ffcount);
   exec("ps -efW|grep -v grep|grep mkvmerge|wc -l", $mkvmcount);
 
@@ -39,5 +42,13 @@ function formatBytes($bytes, $precision, $kbyte) {
     $bytes /= pow(1000, $pow);
   }
   return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+function stop($args, $stats) {
+  $stats['stop'] = true;
+  touch($args['stop']);
+  showStats($stats);
+  exec('kill -9 ' . getmypid());
+  exit;
 }
 
