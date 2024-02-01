@@ -28,13 +28,11 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
   <li><a href="https://www.matroska.org/downloads/mkvtoolnix.html" target=_blank>mkvmerge</a> (optional but recommeneded)</li>
 </ul>
 
-<em><b>-->> ffmpeg, ffprobe, and mkvmerge must be in your terminal's $PATH </b></em>
-
 ### Installing
 
   git clone ffmpeg onto your computer and create a symbolic link to the ffmpeg.php file somewhere that is in your $PATH: (~/bin/ffhevc) for example.  You can name the symbolic link whatever you like (I use `hevc`).. whatever works for you.
 
-  Ensure ffmpeg, ffprobe, mkvmerge and php are in your shell $PATH.  use `which ffmpeg` (etc.. etc..) to check.
+  Ensure ffmpeg, ffprobe, mkvmerge and php are in your shell's $PATH.  use `which ffmpeg` (etc.. etc..) to check.
 
   FFhevc was written on a Windows/Cygwin environment.  It should work on Apple and Linux but it hasn't been tested on those systems as of yet.
 
