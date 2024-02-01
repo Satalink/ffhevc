@@ -10,7 +10,7 @@
 
 ## About <a name = "about"></a>
 
-FFhevc uses FFmpeg and FFprobe to convert to, anaylize, and re-encode mkv videos.  It allows you to configure maximum qaulity and resolution per media directory.  Optionally, It can process incoming files and move them to their destination directory once re-encoded.  If you have mkvmerge installed, FFhevc will use it to filter out unwanted tracks such as foreign language and director comment tracks.  
+FFhevc uses FFmpeg and FFprobe to convert to, anaylize, and re-encode mkv videos.  It allows you to configure maximum qaulity and resolution per media directory.  If the rename flag is enabled, it will rename your media files automatically to Plex file naming Standards.  Optionally, It can process incoming files and move them to their destination directory once re-encoded.  If you have mkvmerge installed (recommended), FFhevc will use it to filter out unwanted tracks such as foreign language and director comment tracks to further reduce space.  
 
 ### Usage <a name = "usage"></a>
 
