@@ -276,17 +276,17 @@ function processItem($dir, $item, $options, $args, $stats) {
           rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
         }
       }
-      echo "================================================================================\n";
       echo ansiColor("blue") . "SIZE-STAT: " . $file['filename'] . $options['extension'] . " ( " . 
         "[orig] " . ansiColor("red") . formatBytes(filesize($fileorig['basename']), 2, true) . ansiColor("blue") . " - " .
         "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " . 
         "[diff] " . ansiColor("green") . formatBytes(filesize($fileorig['basename']) - ($info['format']['size']), 2, true) . ansiColor("blue") . " " .
         ")\n" . ansiColor();
+      print charTimes(80, "#", "blue") . "\n";
       if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
         $stats['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
         $stats['reEncoded']++;
       }
-      if (file_exists($fileorig['basename'])) {
+      if (file_exists($fileorig['basename']) && !$options['args']['keeporiginal']) {
         unlink($fileorig['basename']);
       } 
     }
