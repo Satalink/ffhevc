@@ -1,2 +1,3 @@
-.vscode/
-conf/media_path_keys.php
+/test
+/.vscode
+/conf/media_path_keys.php

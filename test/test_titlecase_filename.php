@@ -1,26 +1,30 @@
 #!/usr/bin/phpdbg -qrr
 <?php
-require __DIR__ . DIRECTORY_SEPARATOR . ".." . DIRECTORY_SEPARATOR . 'includes.php';
+// prod shebang --> #!/usr/bin/env php
+$mms = microtime(true);
+require __DIR__ . DIRECTORY_SEPARATOR . ".." . DIRECTORY_SEPARATOR . 'inc' . DIRECTORY_SEPARATOR .'_includes.php';
 
-$t = rand(0,);
+$t = rand(0,1);
 $w = rand(1,3);
-
-//$title = 'New Movie Title (2024).1080p.Bluray.x264.ac3.mkv';
 
 $title = getRandTitle($t, $w);
 
 /**  TEST CASE */
 $filename = __DIR__ . DIRECTORY_SEPARATOR . "$title";
 $file = pathinfo("$filename");
-print_r($file);
+
+//print_r($file);
 // File must exist for function to rename
 exec("touch '$file[basename]'");
-$file = titlecase_filename($file, $options);
+
+$file = rename_PlexStandards($file, $options, $info);
 $filename = $file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'];
 if (file_exists("$filename")) {
   unlink ("$filename");
 }
-print_r($file);
+//print_r($file);
+
+print (microtime(1) - $mms) . "ms\n";
 
 function getRandTitle($t=1, $w=2) {
   $title = '';
@@ -74,5 +78,4 @@ function getRandTitle($t=1, $w=2) {
 
   $filename = "$title" . "$spec" . "$ext";
   return($filename);
-
 }

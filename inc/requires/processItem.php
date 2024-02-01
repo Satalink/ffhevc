@@ -9,10 +9,9 @@
 
 function processItem($dir, $item, $options, $args, $stats) {
   $file = remove_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"), $options);
-  $file = titlecase_filename($file, $options);
-
   checkProcessCount($args, $options);   //Don't melt my CPU!
   
+  // Exclusions
   if (
     !isset($file['extension']) ||
     !in_array(strtolower($file['extension']), $options['args']['extensions'])
@@ -21,15 +20,18 @@ function processItem($dir, $item, $options, $args, $stats) {
     return($stats);
   }
   if ($options['args']['exclude']) {
-    //TODO Verify this code
+    // TODO Verify this code
     list($file, $info) = ffprobe($file, $options);
     if (!empty($info)) {
-      $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
       setXmlFormatAttribute($file, "exclude");
     }
     return($stats);
   }
-  
+
+  // Process Non-Excluded Files
+  if (isset($stats['processed'])) {  
+    $stats['processed']++;
+  }
   // Convert original "accepted" format to Matroska (mkv) 
   // acceptible formats configured in $options['args']['extensions']
   if ($file['extension'] !== "mkv") {
@@ -72,10 +74,6 @@ function processItem($dir, $item, $options, $args, $stats) {
     }
   }
 
-  if (isset($stats['processed'])) {  
-    $stats['processed']++;
-  }
-
   $curdir = getcwd();
   chdir($file['dirname']);  
 
@@ -87,7 +85,6 @@ function processItem($dir, $item, $options, $args, $stats) {
   if (empty($info)) {
     return($stats);
   }
-
   $options = ffanalyze($info, $options, $args, $dir, $file);
   if (empty($options)) {
     return($stats);
@@ -109,7 +106,7 @@ function processItem($dir, $item, $options, $args, $stats) {
        if ( !$info['format']['mkvmerged'] ||
            $options['args']['force']
        ) {
-          $mkvmerge_temp_file =  $file['extension'] . "." . "merge";
+          $mkvmerge_temp_file = "." . $file['extension'] . "." . "merge";
           $cmdln = "mkvmerge" .
           " --language 0:" . $options['args']['language'] .
           " --language 1:" . $options['args']['language'] .
@@ -270,6 +267,8 @@ function processItem($dir, $item, $options, $args, $stats) {
     if (empty($reasons) || ($options['args']['force'])) {
       if (file_exists($file['filename'] . $options['extension'])) {
         list($file, $info) = ffprobe($file, $options);
+        $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
+        $file = rename_PlexStandards($file, $options, $info);
         touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination']) && file_exists($options['args']['destination'] . DIRECTORY_SEPARATOR)) {
           //move file to destination path defined in (external_ini_file)
@@ -307,6 +306,7 @@ function processItem($dir, $item, $options, $args, $stats) {
         rename($fileorig['basename'], $file['basename']);
         $info = $inforig;
         $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
+        $file = rename_PlexStandards($file, $options, $info);
         $options['args']['exclude'] = true;
         if (file_exists("./.xml/" . $fileorig['filename'] . ".xml")) {
           //Shouldn't exist, but if it does -- delete it

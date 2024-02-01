@@ -9,12 +9,18 @@ $args = array(
   // Configuration Settings
   "max_processes" => 1,       // maximum number of instances this application can run
   "stop" => "/tmp/hevc.stop", // If this file exists the process will exist after finished with the current file
-  "rename" => false,           // Rename files to standard filenaming specification
+  
+  "rename" => true,           
+                              // Rename files to standard filenaming specification
                               // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]
                               //
                               //  from:  movie.title.1999.Bluray.h264.ac3.mkv
                               //    to:  Movie Title (1999) [WebDL x265 EAC3].mkv
-  "remove_illegal_chars"  => false,
+  "remove_illegal_chars"  => true,
+                              // Remove single quotes from filenames. (Not part of the renaming function.)
+                              //   from: Jim's Movie (1997) [...].mkv
+                              //     to: Jims Movie (1997).mkv
+                    
   "my_config" => 'hevc-nvenc-mkv', // Map to the "opt" configuration below
 
   /* 

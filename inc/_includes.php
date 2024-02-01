@@ -16,13 +16,15 @@ $stats = array(
   'starttime' => time()
  );
 
-include __DIR__ . DIRECTORY_SEPARATOR . 'conf' . DIRECTORY_SEPARATOR . 'settings.php';
-$includeDirs = array(
-  __DIR__ . DIRECTORY_SEPARATOR . 'inc' . DIRECTORY_SEPARATOR . 'requires' . DIRECTORY_SEPARATOR,
-  __DIR__ . DIRECTORY_SEPARATOR . 'inc' . DIRECTORY_SEPARATOR,
+require __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'conf' . DIRECTORY_SEPARATOR . 'settings.php';
+
+ $includeDirs = array(
+  __DIR__ . DIRECTORY_SEPARATOR . 'requires' . DIRECTORY_SEPARATOR,
+  __DIR__ . DIRECTORY_SEPARATOR,
 );
+
 foreach ($includeDirs as $includeDir) {
-  foreach (glob($includeDir . "/*.php") as $incFile) {
+  foreach (glob($includeDir . "*.php") as $incFile) {
       require_once $incFile;
   }
 }

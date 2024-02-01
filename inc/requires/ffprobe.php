@@ -167,6 +167,8 @@ function ffprobe($file, $options) {
     !empty($info['video']) &&
     !empty($info['audio'])
   ) {
+    $file = rename_byCodecs($file, $options, $info);
+    $file = rename_PlexStandards($file, $options, $info);
     print ansiColor("blue") . "$action: " . ansiColor("green") . $file['basename'] . ansiColor("blue") . " (";
     if (!empty($info['video']) && !empty($info['video']['bitrate'])) {
       print $info['video']['codec_type'] . ":" . $info['video']['codec'] . ", " . $info['video']['width'] . "x" . $info['video']['height'] . ", " . formatBytes($info['video']['bitrate'], 2, false) . "PS | ";
@@ -203,6 +205,7 @@ function ffprobe($file, $options) {
       print $file['basename'] . " NO Video or Audio\n";
       $info = array();
     }
+
     // Check if color_range is in options
     if (
       !empty($info['video']['color_range']) && 
