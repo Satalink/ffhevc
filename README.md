@@ -28,7 +28,7 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
   <li><a href="https://www.matroska.org/downloads/mkvtoolnix.html" target=_blank>mkvmerge</a> (optional but recommeneded)</li>
 </ul>
 
-*** ffmpeg, ffprobe, and mkvmerge must be in your terminal's $PATH ***
+<em><b> ffmpeg, ffprobe, and mkvmerge must be in your terminal's $PATH </b></em>
 
 ### Installing
 
