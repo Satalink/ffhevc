@@ -44,7 +44,7 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
 
   > $> ffhevc.php
   
-  Run in a media directory without any options or paths to scan and process the current working directory.  If there is a key defined in the conf/media_paths_keys.php file that matches your current working directory, those settings will be used.  Otherwise, global defaults defined in the inc/requires/options.php file will be used.
+  Run in a media directory without any options or paths to scan and process the current working directory.  If there is a key defined in the conf/media_paths_keys.php file that matches your current working directory, those settings will be used.  Otherwise, global defaults defined in the inc/options.php file will be used.
 
   > $> ffhevc.php "My Favorite Video.mkv"
 
