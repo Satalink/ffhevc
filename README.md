@@ -1,7 +1,7 @@
 # FFhevc
 
 ## Dangerous Known Issue ##
-CTRL-C handling is not working correct since the code has been migrated to an app structure. Since the induction of includes / requires, CTRL-C does not successfully terminate the script correctly.  Rather it terminates the include code and returns to the parent.   If you CTRL-C break from this script, it can and will result in your media file being truncated (unfinished).   I'm looking into fixing this (it's complicated.)   If you wish to terminate the running process, please use the stop file method. `$> touch /tmp/hevc.stop` and it will terminate after the current running media process has completed.
+CTRL-C handling is not working correctly since the code has been migrated to an app structure. Since the induction of includes / requires, CTRL-C does not successfully terminate the script correctly.  Rather it terminates the include code and returns to the parent.   <u><b>If you CTRL-C break from this script, it can and will result in your media file being truncated (unfinished)</u></b>.   I'm looking into fixing this (it's complicated.)   If you wish to terminate the running process, please use the stop file method. `$> touch /tmp/hevc.stop` and it will terminate after the current running media process has completed.
 
 ## Table of Contents
 
