@@ -11,7 +11,6 @@ function processRecursive($dir, $options, $args, $stats) {
   foreach ($list as $index => $item) {
     $stop = $args['stop'];
     if (file_exists("$stop")) {
-      unlink("$stop");
       print ansiColor("red") . "STOP FILE DETECTED: $stop" . ansiColor();
       return($stats);
     }
@@ -27,11 +26,6 @@ function processRecursive($dir, $options, $args, $stats) {
       }
     }
     else {
-      $item_exploded = preg_split('/\./', $item);
-      $item_extension = end($item_exploded);
-      if (isset($item_extension) && !empty($item_extension) && !in_array(strtolower($item_extension), $options['args']['extensions'])) {
-        continue;  //skip non-accepted files by extension
-      }
       $stats = processItem($dir, $item, $options, $args, $stats);
     }
   }

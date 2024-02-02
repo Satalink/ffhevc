@@ -6,21 +6,27 @@
  * 
  */
 
-
+;
 function processItem($dir, $item, $options, $args, $stats) {
-  $file = remove_illegal_chars(pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item"), $options);
+
+  $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");
+  if (!in_array($file['extension'], $options['args']['extensions'])) {
+    return;
+  }
+
+  $file = remove_illegal_chars($file, $options);
   checkProcessCount($args, $options, $stats);   //Don't melt my CPU!
   
+  // Stop Detected
+  if (file_exists($args['stop'])) {
+    return($stats);
+  }
   // Exclusions
-  if (
-    !isset($file['extension']) ||
-    !in_array(strtolower($file['extension']), $options['args']['extensions'])
-  ) {
-    print ansiColor("red") . $file['basename'] ." format is not configured to be supported.\n" . ansiColor();
+  if (!isset($file['extension']) || !in_array(strtolower($file['extension']), $options['args']['extensions'])) {
     return($stats);
   }
   if ($options['args']['exclude']) {
-    // TODO Verify this code
+    // If --exclude is used command line parameter
     list($file, $info) = ffprobe($file, $options);
     if (!empty($info)) {
       setXmlFormatAttribute($file, "exclude");
@@ -54,10 +60,11 @@ function processItem($dir, $item, $options, $args, $stats) {
     if (!$options['args']['test'] && !isset($stats['stop'])) {
       exec("$cmdln", $output, $status);
       if ($status == 255) {
-        //status(255) => CTRL-C    
-        $stats = stop($args, $stats);
+        //status(255) => CTRL-C
+        stop($args);
+        return;
       }
-      if (file_exists($file['filename'] . ".mkv")) {
+      if (file_exists($file['filename'] . ".mkv" && !file_exists($args['stop']))) {
         $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".mkv");
         $mtime = filemtime($file['basename']);
         unlink($file['basename']);
@@ -80,13 +87,13 @@ function processItem($dir, $item, $options, $args, $stats) {
 # Process Item
   $options['info']['title'] = "'" . str_replace("'", "\'", $file['filename']) . "'";
   $options['info']['timestamp'] = date("Ymd.His");
-
   list($file, $info) = ffprobe($file, $options);
-  if (empty($info)) {
+
+  if (empty($info) || file_exists($args['stop'])) {
     return($stats);
   }
   $options = ffanalyze($info, $options, $args, $dir, $file);
-  if (empty($options)) {
+  if (empty($options) || file_exists($args['stop'])) {
     return($stats);
   }
 
@@ -101,11 +108,9 @@ function processItem($dir, $item, $options, $args, $stats) {
 
 //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$info['format']['mkvmerged'] && !$options['args']['test'] ||
-      $options['args']['force'] && !$options['args']['test']) {
+      $options['args']['force'] && !$options['args']['test'] && !file_exists($args['stop'])) {
     if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
-       if ( !$info['format']['mkvmerged'] ||
-           $options['args']['force']
-       ) {
+       if (( !$info['format']['mkvmerged'] || $options['args']['force'] ) && !file_exists($args['stop'])) {
           $mkvmerge_temp_file = "." . $file['extension'] . "." . "merge";
           $cmdln = "mkvmerge" .
           " --language 0:" . $options['args']['language'] .
@@ -117,17 +122,17 @@ function processItem($dir, $item, $options, $args, $stats) {
           " --no-attachments" .
           " --track-tags '" . $options['args']['language'] . "'" .
           " --output '" . $file['filename'] . $mkvmerge_temp_file ."' '" . $file['basename'] . "'";
-        if ($options['args']['verbose']) {
+        if ($options['args']['verbose'] || file_exists($args['stop'])) {
           print "\n\n". ansiColor("green") . "$cmdln\n" . ansiColor();
         }
         system("$cmdln 2>&1", $status);
         if ($status == 255) {
           //status(255) => CTRL-C    
-          touch($args['stop']);
-          $stats['stop'] = true;
+          stop($args);
+          return;
         }
 
-        if (file_exists($file['filename'] . $mkvmerge_temp_file)) {
+        if (file_exists($file['filename'] . $mkvmerge_temp_file ) && !file_exists($args['stop'])) {
           $mtime = filemtime($file['basename']);
           unlink($file['basename']);
           rename($file['filename'] . $mkvmerge_temp_file, $file['filename'] . ".mkv");
@@ -138,6 +143,9 @@ function processItem($dir, $item, $options, $args, $stats) {
           if (empty($options)) {
             return($stats);
           }
+        }
+        if(file_exists($args['stop'])) {
+          exit;
         }
       }
     }
@@ -193,7 +201,6 @@ function processItem($dir, $item, $options, $args, $stats) {
   if ($options['args']['test']) {
     $options['args']['meta'] = '';
   }
-
   # CONVERT MEDIA
   $cmdln = "nice -n1 ffmpeg " . 
     "-hide_banner " . 
@@ -213,20 +220,20 @@ function processItem($dir, $item, $options, $args, $stats) {
   if ($options['args']['verbose']) {
     print "\n\n" . ansiColor("green") . "$cmdln\n\n" . ansiColor();
   }
-  if (!$options['args']['test']) {
-    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor() . ", runtime=" . seconds_toTime($info['format']['duration']) . "\n";
+  if (!$options['args']['test'] && !file_exists($args['stop'])) {
+    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor("yellow") . ", runtime=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
     exec("$cmdln", $output, $status);
     if($status === 255) {
       if ($status == 255) {
-        //status(255) => CTRL-C    
-        touch($args['stop']);
-        $stats['stop'] = true;
+        //status(255) => CTRL-C 
+        stop($args);
+        return;
       }
     }
   }
 
  #Swap Validate
-  if ($options['args']['test']) {
+  if ($options['args']['test'] || file_exists($args['stop'])) {
     return($stats);
   }
   if ($options['args']['keepowner']) {
@@ -238,8 +245,8 @@ function processItem($dir, $item, $options, $args, $stats) {
     rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
     $fileorig= pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".orig." . $file['extension']);    
   }
-  if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
-    unlink("./.xml/" . $file['filename'] . ".xml");
+  if (file_exists("./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml")) {
+    unlink("./.xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml");
   }
   if (file_exists($file['filename'] . ".hevc")) {
     rename($file['filename'] . ".hevc", $file['filename'] . $options['extension']);
@@ -319,7 +326,7 @@ function processItem($dir, $item, $options, $args, $stats) {
         $options['args']['exclude'] = true;
         if (file_exists("./.xml/" . $fileorig['filename'] . ".xml")) {
           //Shouldn't exist, but if it does -- delete it
-          unlink("./.xml/" . $fileorig['filename'] . ".xml");
+          unlink("./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml");
         }
       }
     }

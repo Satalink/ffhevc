@@ -36,6 +36,11 @@ function appBanner($banner) {
   print "\n"; charTimes(80, "#", "blue"); print "\n\n";
 }
 
+/*  For performance debugging */
+function mmt($name) {
+  print "function: $name: " . microtime(true) . "\n";
+}
+
 function charTimes($x, $c, $r=null, $y=null) {
   print isset($r) ? ansiColor("$r"):'';
    for($i=0;$i<=$x;$i++) {$y.="$c";} print "$y";

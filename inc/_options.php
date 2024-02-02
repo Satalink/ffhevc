@@ -189,10 +189,6 @@ function getCommandLineOptions($options, $args) {
     if (array_key_exists("pix_fmt", $cmd_ln_opts)) {
       $options['video']['pix_fmt'] = $cmd_ln_opts['pix_fmt'];
     }
-    // Initializing -- if $stop file exist, delete it (leftover?)
-    if (file_exists($args['stop'])) {
-      unlink($args['stop']);
-    }
     return($options);
   } 
 

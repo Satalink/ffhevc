@@ -44,11 +44,8 @@ function formatBytes($bytes, $precision, $kbyte) {
   return round($bytes, $precision) . ' ' . $units[$pow];
 }
 
-function stop($args, $stats) {
-  $stats['stop'] = true;
+function stop($args) {
   touch($args['stop']);
-  showStats($stats);
-  exec('kill -9 ' . getmypid());
-  exit;
+  return;
 }
 

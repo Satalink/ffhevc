@@ -10,16 +10,17 @@
 
 function ffprobe($file, $options) {
   $exec_args = "-v quiet -print_format xml -show_format -show_streams";
+  $xml_file = "./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml";
   $info = array();
   $xml = null;
   if (!file_exists("./.xml")) {
     mkdir("./.xml");
   }
-  if (!file_exists("./.xml/" . $file['filename'] . ".xml")) {
+  if (!file_exists("$xml_file")) {
     $action = "PROBED";
     $cmdln = "ffprobe $exec_args '". $file['basename'] . "' > './.xml/" . $file['filename'] . ".xml'";
-    $result = exec("$cmdln");
-    if (!file_exists("./.xml/" . $file['filename'] . ".xml")) {
+    exec("$cmdln");
+    if (!file_exists("$xml_file")) {
       print ansiColor("red") . "error: Could not create ffprobe xml.  Check that ffprobe is exists, is executable, and in the system search path\n" . ansiColor();
       return(array($file, $options));
     }
@@ -27,8 +28,8 @@ function ffprobe($file, $options) {
   else {
     $action = "INFO";
   }
-  if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
-    $xml = simplexml_load_file("./.xml/" . $file['filename'] . ".xml");
+  if (file_exists("$xml_file")) {
+    $xml = simplexml_load_file("$xml_file");
     $xml_filesize = getXmlAttribute($xml->format, "size");
   }
   if (!isset($xml) ||
@@ -36,9 +37,9 @@ function ffprobe($file, $options) {
     (!empty($xml_filesize) && (int) $xml_filesize != filesize($file['basename']))
   ) {
     print "Stale xml detected.  Initiating new probe...\n";
-    unlink("./.xml/" . $file['filename'] . ".xml");
+    unlink("$xml_file");
     list($file, $info) = ffprobe($file, $options);
-    $xml = simplexml_load_file("./.xml/" . $file['filename']  . ".xml");
+    $xml = simplexml_load_file("$xml_file");
   }
   $info = array();
   $info['format']['format_name'] = getXmlAttribute($xml->format, "format_name");
@@ -217,4 +218,15 @@ function ffprobe($file, $options) {
   }
   
   return(array($file, $info));
+}
+
+function ffprobeXml($file) {
+  $cwd = getcwd();
+  chdir($file['dirname']);
+  $exec_args = "-v quiet -print_format xml -show_format -show_streams";
+  $cmdln = "ffprobe $exec_args '". $file['basename'] . ansiColor() . "'";
+print  ansiColor("green") . "$cmdln" . "\n";
+  exec("$cmdln", $xml);
+  chdir($cwd);
+  return($xml);
 }
