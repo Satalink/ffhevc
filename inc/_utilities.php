@@ -44,8 +44,12 @@ function formatBytes($bytes, $precision, $kbyte) {
   return round($bytes, $precision) . ' ' . $units[$pow];
 }
 
-function stop($args) {
+function stop($args, $time=null) {
+  // the `register_shutdown_function` won't pass time for normal shutdown of end of script
   touch($args['stop']);
+  if (isset($time)) {
+    file_put_contents($args['stop'], $time, FILE_APPEND);
+  }
   return;
 }
 

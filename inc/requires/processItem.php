@@ -57,11 +57,11 @@ function processItem($dir, $item, $options, $args, $stats) {
     if ($options['args']['verbose']) {
       print ansiColor("green") . "$cmdln\n" . ansiColor();
     }
-    if (!$options['args']['test'] && !isset($stats['stop'])) {
+    if (!$options['args']['test']) {
       exec("$cmdln", $output, $status);
       if ($status == 255) {
         //status(255) => CTRL-C
-        stop($args);
+        stop($args, time());
         return;
       }
       if (file_exists($file['filename'] . ".mkv" && !file_exists($args['stop']))) {
@@ -108,7 +108,7 @@ function processItem($dir, $item, $options, $args, $stats) {
 
 //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge` && !$options['args']['skip'] && !$info['format']['mkvmerged'] && !$options['args']['test'] ||
-      $options['args']['force'] && !$options['args']['test'] && !file_exists($args['stop'])) {
+      $options['args']['force'] && !$options['args']['test']) {
     if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
        if (( !$info['format']['mkvmerged'] || $options['args']['force'] ) && !file_exists($args['stop'])) {
           $mkvmerge_temp_file = "." . $file['extension'] . "." . "merge";
@@ -128,7 +128,7 @@ function processItem($dir, $item, $options, $args, $stats) {
         system("$cmdln 2>&1", $status);
         if ($status == 255) {
           //status(255) => CTRL-C    
-          stop($args);
+          stop($args, time());
           return;
         }
 
@@ -226,7 +226,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     if($status === 255) {
       if ($status == 255) {
         //status(255) => CTRL-C 
-        stop($args);
+        stop($args, time());
         return;
       }
     }
