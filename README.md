@@ -9,13 +9,14 @@ CTRL-C handling is not working correctly since the code has been migrated to an 
 - [Usage](#usage)
 - [Getting Started](#getting_started)
 - [Examples](#examples)
+- [Plex Naming Standard](#naming)
 - [Contribute](../CONTRIBUTING.md)
 
 ## About <a name = "about"></a>
 
 FFhevc uses FFmpeg and FFprobe to convert to, anaylize, and re-encode mkv videos.  It allows you to configure maximum qaulity and resolution per media directory.  If the rename flag is enabled, it will rename your media files automatically to Plex file naming Standards.  Optionally, It can process incoming files and move them to their destination directory once re-encoded.  If you have mkvmerge installed (recommended), FFhevc will use it to filter out unwanted tracks such as foreign language and director comment tracks to further reduce space.  
 
-### Usage <a name = "usage"></a>
+## Usage <a name = "usage"></a>
 
 If you have a movies, movie archive, tv shows, tv show archive setup, you can set up ffhevc cronjobs to scan each media directory for videos that are above your quality/resolution set limits.  FFhevc will re-encode them according to your configuration settings per media directory.
 
@@ -56,3 +57,17 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
   > $> ffhevc.php mov
 
   If you supply a "key" (defined in conf/media_paths_keys.php), the path defined in that key will be scanned and processed using the settings defined for that key.
+
+### Plex Naming Standard <a name = "naming"></a>
+
+ffhevc uses the Plex Naming Standard if the `rename` flag is set to true.
+  
+#### Recommended Settings ()
+  Radarr -> Settings -> Media Management: Standard Movie Format
+  `{Movie CleanTitle} ({Release Year}) - [ {ImdbId} {Quality Title} {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
+
+  Sonarr -> Settings -> Media Management: Standard Episode Format
+  `{Series CleanTitle} - s{season:00}e{episode:00} - [ {ImdbId} {Quality Title} {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
+
+  -  ref [Plex Movie Naming Standard](https://support.plex.tv/articles/naming-and-organizing-your-movie-media-files/)
+  -  ref [Plex TV Show Naming Standard](https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/)

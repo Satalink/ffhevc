@@ -18,6 +18,7 @@ if (file_exists($args['stop'])) {
   if (filesize($args['stop'])) {
     print charTimes(40, "#", "blue") . "\n";
     print ansiColor("blue") . "#  STOP FILE DETECTED: " . ansiColor("red") . $args['stop'] . ansiColor() . "\n";
+    print ansiColor("blue") . "#  Previous process was CTRL-C stopped on " . date("Y-m-d h:i:s", filectime("'".$args['stop']."'")) . ansiColor();
     print charTimes(40, "#", "blue") . "\n";
     exit(1);
   } else {

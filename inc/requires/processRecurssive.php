@@ -10,9 +10,6 @@ function processRecursive($dir, $options, $args, $stats) {
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
     if (file_exists($args['stop'])) {
-      print charTimes(40, "#", "blue") . "\n";
-      print ansiColor("blue") . "#  STOP FILE DETECTED: " . ansiColor("red") . $args['stop'] . ansiColor() . "\n";
-      print charTimes(40, "#", "blue") . "\n";
       return($stats);
     }
 
