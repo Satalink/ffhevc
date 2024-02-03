@@ -27,8 +27,7 @@ if (file_exists($args['stop'])) {
   }
 }
 
-$banner = array('f','f','H','E','V','C');
-appBanner($banner);
+if ($args['display_banner']) appBanner(array('f','f','H','E','V','C'));
 
 foreach ($dirs as $key => $dir) {
   $stats = processRecursive($dir, $options, $args, $stats);

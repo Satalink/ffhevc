@@ -29,7 +29,9 @@ $args = array(
                                 // Remove single quotes from filenames. (Not part of the renaming function.)
                                 //   from: Jim's Movie (1997) [...].mkv
                                 //     to: Jims Movie (1997).mkv
-                    
+
+"display_banner" => true,       // Display the ffHEVC banner on run
+
   "my_config" => 'hevc-nvenc-mkv', // Map to the "opt" configuration below
 
   /* 

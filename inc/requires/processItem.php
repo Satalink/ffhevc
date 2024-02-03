@@ -245,7 +245,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
     $fileorig= pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".orig." . $file['extension']);    
   }
-  if (file_exists("./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml")) {
+  if (file_exists("./.xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml")) {
     unlink("./.xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml");
   }
   if (file_exists($file['filename'] . ".hevc")) {
