@@ -55,9 +55,10 @@
       $dir = getcwd();
       $options = getLocationOptions($options, $args, $dir);
       if (!empty($options['args']) && array_key_exists("key", $options['args'])) {
-        $args['key'] = $options['args']['key'];
+        $args['key'] = $options['args']['key'];       
+      } else {
+        $dirs = array("key" => $dir);
       }
-      $dirs = array($args['key'] => $dir);
     }
     else {
       print "\n" . ansiColor("yellow") . "Defined Locations:" . ansiColor() . "\n";
@@ -263,30 +264,31 @@ function getDefaultOptions($args, $location_config) {
     "p010le",
   );
   $options['args']['cmdlnopts'] = array(
-    "help",
-    "keys",
-    "test",
+    "exclude",
+    "followlinks",
     "force",
+    "help",
+    "keepowner",
+    "keeporiginal",
+    "keys",
     "nomkvmerge",
     "override",
-    "followlinks",
-    "exclude",
-    "keeporiginal",
-    "keepowner",
     "permissions",
-    "language::",
-    "filterforeign",
+    "test",
+    "verbose",
     "abitrate::",
-    "acodec::",
     "achannels::",
+    "acodec::",
     "asamplerate::",
-    "pix_fmt::",
-    "vbr::",
-    "vmin::",
-    "vmax::",
+    "filterforeign",
     "fps::",
+    "language::",
+    "pix_fmt::",
+    "quality::",
     "scale::",
-    "quality::"
+    "vbr::",
+    "vmax::",
+    "vmin::",
   );
   return($options);
 }

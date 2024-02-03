@@ -11,7 +11,7 @@ function processItem($dir, $item, $options, $args, $stats) {
 
   $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");
   if (!in_array($file['extension'], $options['args']['extensions'])) {
-    return;
+    return($stats);
   }
 
   $file = remove_illegal_chars($file, $options);
@@ -62,7 +62,7 @@ function processItem($dir, $item, $options, $args, $stats) {
       if ($status == 255) {
         //status(255) => CTRL-C
         stop($args, time());
-        return;
+        return($stats);
       }
       if (file_exists($file['filename'] . ".mkv" && !file_exists($args['stop']))) {
         $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".mkv");
@@ -129,7 +129,7 @@ function processItem($dir, $item, $options, $args, $stats) {
         if ($status == 255) {
           //status(255) => CTRL-C    
           stop($args, time());
-          return;
+          return($stats);
         }
 
         if (file_exists($file['filename'] . $mkvmerge_temp_file ) && !file_exists($args['stop'])) {
@@ -202,7 +202,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     $options['args']['meta'] = '';
   }
   # CONVERT MEDIA
-  $cmdln = "nice -n1 ffmpeg " . 
+  $cmdln = "nice --adjustment=". $args['priority'] ." ffmpeg " . 
     "-hide_banner " . 
     "-v " . $options['args']['loglev'] . " " .
     "-i \"" . $file['basename'] . "\" " .
