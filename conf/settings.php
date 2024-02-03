@@ -9,19 +9,26 @@ $args = array(
   "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php",  
 
   // Configuration Settings
-  "max_processes" => 1,       // maximum number of instances this application can run
-  "stop" => "/tmp/hevc.stop", // If this file exists the process will exist after finishing with the current file
+  "max_processes" => 1,         // maximum number of instances this application can run
+
+  "stop" => "/tmp/hevc.stop",   // If this file exists the process will exist after finishing with the current file. Required to have it
+                                // set to but you can change it to whatever works for you.  (including /dev/null if you don't want it at all).
+                                // You might find it useful to create an alias stop='touch /tmp/hevc.stop' if you want to stop a huge cron job quickly.
   
-  "rename" => true,           
-                              // Rename files to standard filenaming specification
-                              // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]
-                              //
-                              //  from:  movie.title.1999.Bluray.h264.ac3.mkv
-                              //    to:  Movie Title (1999) [WebDL x265 EAC3].mkv
+  "remove_stale_stop" => true,  // If a "stop" file exists from a previous CTRL-C, remove it when you start ffhevc again if detected.
+                                // This may be helpful if you have cronjobs setup AND run commandline as well.  Retaining the "stop" file 
+                                // would prevent a cron from auto-resuming a job you CTRL-C quit.
+
+  "rename" => true,             // Rename files to standard filenaming specification
+                                // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]
+                                //
+                                //  from:  movie.title.1999.Bluray.h264.ac3.mkv
+                                //    to:  Movie Title (1999) [WebDL x265 EAC3].mkv
+
   "remove_illegal_chars"  => true,
-                              // Remove single quotes from filenames. (Not part of the renaming function.)
-                              //   from: Jim's Movie (1997) [...].mkv
-                              //     to: Jims Movie (1997).mkv
+                                // Remove single quotes from filenames. (Not part of the renaming function.)
+                                //   from: Jim's Movie (1997) [...].mkv
+                                //     to: Jims Movie (1997).mkv
                     
   "my_config" => 'hevc-nvenc-mkv', // Map to the "opt" configuration below
 
@@ -38,6 +45,8 @@ $args = array(
     "hevc-nvenc-mkv"  => array("main10", "matroska", ".mkv", "hevc_nvenc", "yuv420p10le", "hevc", "x265"),
   ),
 );
+
+/*  DO NOT EDIT THIS */
 if (file_exists($args['media_paths_file'])) {
   require_once $args['media_paths_file'];
 } else {
