@@ -55,3 +55,11 @@ function stop($args, $time=null) {
   return;
 }
 
+
+function is_between(int $min, int $max, int $val){
+    if ($val >= $min && $val <= $max) {
+    return true;
+  }
+  return false;
+}
+

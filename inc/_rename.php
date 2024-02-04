@@ -12,14 +12,19 @@ function rename_PlexStandards($file, $options, $info) {
     $specs = [];
     $firstword = true;
 
+    //Grab {year} from Filename
+    $year = null;
     preg_match_all('/\(?(19|20)\d{2}\)?/', $file['filename'], $yr, PREG_SET_ORDER);
-    if (!empty($yr[0])) {
+    if (!empty($yr)) {
       $lastkey = key(array_slice($yr, -1, 1, true));
       $year = $yr[$lastkey][0];
+      $year = preg_replace('/(\(|\))?/', '', $year);
+      // Title should not start with a year  
       if (preg_match('/^'.$year.'/', $file['filename'])) {
         unset($year);
       }
     }
+ 
     // TV Show or Movie?
     if (preg_match('/\d+(e|x)\d+/i', $file['filename'])) {     
       $filename['type'] = "series";
@@ -28,24 +33,28 @@ function rename_PlexStandards($file, $options, $info) {
       $filespecs[1] = $episode[0][0];
       $filename['newtitle'] = preg_split('/(\s|\.|\-|\_)/', $filespecs[0][0]);
       $filename['year'] = isset($year) ? preg_replace('/\(|\)/', "", $year) : null;
-    } elseif (preg_match('/\(?(19|20)\d{2}(\.?|\-?\s?)\d{2}(\.?|\-?|\s?)\d{2}\)?/', $file['filename'])) {
-      $filename['type'] = "dated";        // TODO  Update TestCase to account for dated show names
+
+    } 
+    elseif (preg_match('/\(?(19|20)\d{2}(\.?|\-?\s?)\d{2}(\.?|\-?|\s?)\d{2}\)?/', $file['filename'])) {
+      $filename['type'] = "dated";        
       $filespecs = preg_split('/\(?(19|20)\d{2}(\.?|\-?\s?)\d{2}(\.?|\-?|\s?)\d{2}\)?/', $file['filename'], 0);
       preg_match_all('/\(?(19|20)\d{2}(\.?|\-?\s?)\d{2}(\.?|\-?|\s?)\d{2}\)?/', $file['filename'], $episode, PREG_PATTERN_ORDER);
       $filespecs[1] = $episode[0][0];
       $filename['newtitle'] = $filename['year'] = isset($year) ? preg_replace('/\(|\)/', "", $year) : null;          
-    } else {
+    }
+    else {
       $filename['type'] = "movie";
       if (isset($year)) {
         $filespecs = str_replace('/(\_|\-|\./', "\s", preg_split('/\(?' . $year . '\)?/', $file['filename'], 0));
       }
     }
+    
     $filename['newtitle'] = preg_split('/(\s|\.|\-|\_)/', $filespecs[0]);
     $filename['year'] = isset($year) ? preg_replace('/\(|\)/', "", $year) : null;    
 
     $lastkey = key(array_slice($filespecs, -1, 1, true));
     if (!empty($filespecs[$lastkey])) {
-      $filename['specs'] = preg_split('/(\.|\-|\_)/', $filespecs[1]);
+      $filename['specs'] = preg_split('/(\.|\_|\-|\s+)/', $filespecs[1]);
     }
 
     foreach ($filename['newtitle'] as $word) {
@@ -78,9 +87,11 @@ function rename_PlexStandards($file, $options, $info) {
         $spec = strtolower($spec);      
         if (in_array($spec, $allcap_words)) {
           $specs[] = strtoupper($spec);
-        } elseif (array_key_exists($spec, $camelcase_words)) {        
+        } 
+        elseif (array_key_exists($spec, $camelcase_words)) {        
           $specs[] = $camelcase_words["$spec"];
-        } else {
+        } 
+        else {
           $specs[] = $spec;
         }
       }
@@ -88,7 +99,7 @@ function rename_PlexStandards($file, $options, $info) {
 
     if (file_exists($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'])){
       $titlename = empty($title) ? '' : ltrim(trim(implode(' ', $title)), " ");
-      $titlename .= empty($filename['year']) ? '' : " $year";
+      $titlename .= empty($filename['year']) ? '' : "($year)";
       if ($filename['type'] == "series") {
         $titlename .= empty($specs) ? '' : " - " . ltrim(trim(implode(' ', $specs)), " ");
       } else {
