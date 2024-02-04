@@ -84,7 +84,7 @@ function getCommandLineOptions($options, $args) {
   //COMMAND LINE OPTIONS
     $help = 
     ansiColor("blue") . "command [options] [file|key]  // options and flags before file or defined key\n" .
-    ansiColor("yellow") . "e.g.   $> " . $args['application'] . " --test MediaFileName.mkv\n" .
+    ansiColor("yellow") . "e.g.   $> " . $args['application'] . " --test \"\{MediaFileName\}\"\n" .
     ansiColor("yellow") . "e.g.   $> " . $args['application'] . " --keeporiginal tv\n\n" . 
     ansiColor("green") . "BOOLS (Default false)" .
     ansiColor("blue") . "
@@ -234,10 +234,10 @@ function getDefaultOptions($args, $location_config) {
   $options['audio']['sample_rate'] = 48000;
   $options['audio']['max_streams'] = 1;  //Maximum number of audio streams to keep
 
-  $options['args']['output_format'] = "mkv";
+  $options['args']['extension'] = !empty($args['extension']) ? $args['extension'] : "mkv";
+  $options['args']['extensions'] = array("mkv", "mp4", "mpeg", "ts", "m2ts", "avi");  // acceptable formats to convert/encode
   $options['args']['rename'] = !empty($args['rename']) ?: 0;
   $options['args']['remove_illegal_chars'] = !empty($args['remove_illegal_chars']) ?: 0;
-  $options['args']['extensions'] = array("mkv", "mp4", "mpeg", "ts", "m2ts", "avi");
   $options['args']['verbose'] = false;
   $options['args']['test'] = false;
   $options['args']['stats_period'] = "1";  // ffmpeg stats reporting frequency in seconds
@@ -332,7 +332,7 @@ function getLocationOptions($options, $args, $dir) {
  function setOption($option) {
   $options['profile'] = $option[0];
   $options['format'] = $option[1];
-  $options['extension'] = $option[2];
+  $options['args']['extension'] = str_replace('.', '' ,$option[2]);
   $options['video']['codec'] = $option[3];
   $options['video']['pix_fmt'] = $option[4];
   $options['video']['codec_name'] = $option[5];

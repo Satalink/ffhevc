@@ -60,11 +60,6 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       $options['args']['video'] = "-vcodec copy";
     }
 
-  // var_dump($info['video']);
-  // var_dump($options['video']);
-  // var_dump($options['args']['video']);
-  // exit;
-  
     if (!preg_match("/copy/i", $options['args']['video'])) {
       $pf_key = array_search($info['video']['pix_fmt'], $options['args']['pix_fmts']);
       print ansiColor("blue") . "Video Inspection ->" . ansiColor() .
@@ -311,7 +306,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   if (
        (preg_match("/copy/i", $options['args']['video'])) &&
        (preg_match("/copy/i", $options['args']['audio'])) &&
-       ('.' . $file['extension'] == $options['extension'])
+       ($file['extension'] == $options['args']['extension'])
      ) {
       return(array());  //No re-encoding needed
   }

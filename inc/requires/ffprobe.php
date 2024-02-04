@@ -186,14 +186,14 @@ function ffprobe($file, $options) {
     (empty($info['video']) || empty($info['audio'])) && !$options['args']['test']
   ) {
     $missing = null;
-    if ($file['extension'] == $options['extension']) {
+    if ($file['extension'] == $options['args']['extension']) {
       if (empty($info['video'])) {
         $missing = "video";
       }
       if (empty($info['audio'])) {
         $missing += ' audio';
       }
-      print ansiColor("blue") . " " . $file['filename'] . " $missing track is missing\n" . ansiColor();
+      print ansiColor("blue") . " " . $file['basename'] . " $missing track is missing\n" . ansiColor();
       print "Delete " . $file['basename'] . "?  [Y/n] >";
     }
     if (!$options['args']['exclude'] && !$options['args']['test']) {
@@ -212,7 +212,7 @@ function ffprobe($file, $options) {
       !empty($info['video']['color_range']) && 
       in_array($info['video']['color_range'],$options['video']['hdr']['color_range'])
     ) {
-      print "Incompatible color_range detected: " . $file['filename'] . "\n";
+      print "Incompatible color_range detected: " . $file['basename'] . "\n";
       $info = array();
     }
   }

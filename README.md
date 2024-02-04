@@ -67,7 +67,7 @@ ffhevc uses the Plex Naming Standard if the `rename` flag is set to true.
   `{Movie CleanTitle} ({Release Year}) - [ {ImdbId} {Quality Title} {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
 
   Sonarr -> Settings -> Media Management: Standard Episode Format
-  `{Series CleanTitle} - s{season:00}e{episode:00} - [ {ImdbId} {Quality Title} {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
+  `{Series CleanTitle} - s{season:00}e{episode:00} ({Series Year}) - [ {ImdbId} {Quality Title} {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
 
   -  ref [Plex Movie Naming Standard](https://support.plex.tv/articles/naming-and-organizing-your-movie-media-files/)
   -  ref [Plex TV Show Naming Standard](https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/)

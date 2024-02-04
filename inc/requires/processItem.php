@@ -29,22 +29,18 @@ function processItem($dir, $item, $options, $args, $stats) {
     }
   }
 
-//  TODO Where is this being reset?
   if ($options['args']['exclude']) {
-    // If --exclude is used command line parameter
-    list($file, $info) = ffprobe($file, $options);
-    if (!empty($info)) {
-      setXmlFormatAttribute($file, "exclude");
-    }
+    $options = setXmlExclude($file, $options);
     return($stats);
   }
 
   // Process Non-Excluded Files
-  // Convert original "accepted" format to Matroska (mkv) 
+  //
+  // Convert original "accepted" format to $options['args']['extension'] ? Matroska (mkv) 
   // acceptible formats configured in $options['args']['extensions']
-  if ($file['extension'] !== "mkv") {
+  if ($file['extension'] !== $options['args']['extension']) {
     echo ansiColor("red") . $file['filename'] . "." . $file['extension'] . "\n" . ansiColor();
-    echo ansiColor("blue") . "Container Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . "mkv\n" . ansiColor();
+    echo ansiColor("blue") . "Container Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . $options['args']['extension'] ."\n" . ansiColor();
     // [quiet, panic, fatal, error, warning, info, verbose, debug]
     $subs = $file['extension'] === "mp4" ? "-sn " : ""; //Remove subs from mp4 files to prevent encoding issues
     $cmdln = "ffmpeg " . 
@@ -55,7 +51,7 @@ function processItem($dir, $item, $options, $args, $stats) {
              "$subs" .
              "-stats " .
              "-stats_period" . $options['args']['stats_period'] .
-             "-y '" . $file['filename'] . "." . $options['args']['output_format'] . "'";
+             "-y '" . $file['filename'] . "." . $options['args']['extension'] . "'";
     if ($options['args']['verbose']) {
       print ansiColor("green") . "$cmdln\n" . ansiColor();
     }
@@ -66,11 +62,11 @@ function processItem($dir, $item, $options, $args, $stats) {
         stop($args, time());
         return($stats);
       }
-      if (file_exists($file['filename'] . ".mkv" && !file_exists($args['stop']))) {
-        $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".mkv");
+      if (file_exists($file['filename'] . "." . $options['args']['extension']) && !file_exists($args['stop'])) {
+        $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
         $mtime = filemtime($file['basename']);
         unlink($file['basename']);
-        $mkv_filename = $mkv_file['filename'] . ".mkv";
+        $mkv_filename = $mkv_file['filename'] . "." . $options['args']['extension'];
         touch($mkv_filename, $mtime); //retain original timestamp
         list($file, $info) = ffprobe($mkv_file, $options);            
         $options = ffanalyze($info, $options, $args, $dir, $mkv_file);
@@ -139,8 +135,8 @@ function processItem($dir, $item, $options, $args, $stats) {
         if (file_exists($file['filename'] . $mkvmerge_temp_file ) && !file_exists($args['stop'])) {
           $mtime = filemtime($file['basename']);
           unlink($file['basename']);
-          rename($file['filename'] . $mkvmerge_temp_file, $file['filename'] . ".mkv");
-          touch($file['filename'] . ".mkv", $mtime); //retain original timestamp
+          rename($file['filename'] . $mkvmerge_temp_file, $file['filename'] . "." . $options['args']['extension']);
+          touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
           list($file, $info) = ffprobe($file, $options);
           setXmlFormatAttribute($file, "mkvmerged");
           $options = ffanalyze($info, $options, $args, $dir, $file);
@@ -253,9 +249,9 @@ function processItem($dir, $item, $options, $args, $stats) {
     unlink("./.xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml");
   }
   if (file_exists($file['filename'] . ".hevc")) {
-    rename($file['filename'] . ".hevc", $file['filename'] . $options['extension']);
+    rename($file['filename'] . ".hevc", $file['filename'] . "." . $options['args']['extension']);
   }
-  $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
+  $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
   if (file_exists($file['basename'])) {
     set_fileattr($file, $options);
     $inforig = $info;
@@ -285,18 +281,18 @@ function processItem($dir, $item, $options, $args, $stats) {
       $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['basename']), 0, false) . ")";
     }
     if (empty($reasons) || ($options['args']['force'])) {
-      if (file_exists($file['filename'] . $options['extension'])) {
+      if (file_exists($file['filename'] . $options['args']['extension'])) {
         list($file, $info) = ffprobe($file, $options);
         $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
         $file = rename_PlexStandards($file, $options, $info);
-        touch($file['filename'] . $options['extension'], $mtime); //retain original timestamp
+        touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination']) && file_exists($options['args']['destination'] . DIRECTORY_SEPARATOR)) {
           //move file to destination path defined in (external_ini_file)
-          print ansiColor("green") . "MOVING: " . $file['filename'] . $options['extension'] . " to " . $options['args']['destination'] . "\n" . ansiColor();
-          rename($file['filename'] . $options['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . $options['extension']);
+          print ansiColor("green") . "MOVING: " . $file['filename'] . "." . $options['args']['extension'] . " to " . $options['args']['destination'] . "\n" . ansiColor();
+          rename($file['filename'] . "." . $options['args']['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
         }
       }
-      echo ansiColor("blue") . "SIZE-STAT: " . $file['filename'] . $options['extension'] . " ( " . 
+      echo ansiColor("blue") . "SIZE-STAT: " . $file['basename'] . " ( " . 
         "[orig] " . ansiColor("red") . formatBytes(filesize($fileorig['basename']), 2, true) . ansiColor("blue") . " - " .
         "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " . 
         "[diff] " . ansiColor("green") . formatBytes(filesize($fileorig['basename']) - ($info['format']['size']), 2, true) . ansiColor("blue") . " " .
@@ -337,12 +333,10 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
 
   if ($options['args']['exclude']) {
-    list($file, $info) = ffprobe($file, $options);
-    if (empty($info)) {
-      return($stats);
+    if (!empty($info)) {
+      $options = setXmlExclude($file, $options);
     }
-    setXmlFormatAttribute($file, "exclude");
-  }
+   }
 
   if ($options['args']['cooldown'] > 0) {
     print ansiColor("red") . "Cooldown period: " . $options['args']['cooldown'] . " seconds.\n" . ansiColor();

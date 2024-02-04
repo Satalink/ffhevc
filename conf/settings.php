@@ -23,6 +23,8 @@ $args = array(
                                 // would prevent a cron from auto-resuming a job you CTRL-C quit.
 
   "show_progress" => true,      // Displays percentage of items scanned in media directory.
+
+  "extension" => "mkv",         // The desired media container format of your media files.
   
   "rename" => true,             // Rename files to standard filenaming specification
                                 // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]

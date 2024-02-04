@@ -99,7 +99,7 @@ function rename_PlexStandards($file, $options, $info) {
 
     if (file_exists($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'])){
       $titlename = empty($title) ? '' : ltrim(trim(implode(' ', $title)), " ");
-      $titlename .= empty($filename['year']) ? '' : "($year)";
+      $titlename .= empty($filename['year']) ? '' : " ($year)";
       if ($filename['type'] == "series") {
         $titlename .= empty($specs) ? '' : " - " . ltrim(trim(implode(' ', $specs)), " ");
       } else {
@@ -120,7 +120,6 @@ function rename_PlexStandards($file, $options, $info) {
 function rename_byCodecs($file, $options, $info, $resolution=null, $acodec=null, $vcodec=null, $profile=null) {
   if ($options['args']['rename']) {
     $filename    = $file['filename'];
-
     $resolutions = array('480p', '720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
     $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265", "vc1", "hevc");
     $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
