@@ -22,6 +22,8 @@ $args = array(
                                 // This may be helpful if you have cronjobs setup AND run commandline as well.  Retaining the "stop" file 
                                 // would prevent a cron from auto-resuming a job you CTRL-C quit.
 
+  "show_progress" => true,      // Displays percentage of items scanned in media directory.
+  
   "rename" => true,             // Rename files to standard filenaming specification
                                 // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]
                                 //
