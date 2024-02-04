@@ -11,7 +11,7 @@ $args = array(
   // Configuration Settings
   "max_processes" => 1,         // maximum number of instances this application can run
 
-  "priority" => "11",          // ffmpeg encoding process processor priority: -20 to 19 (19 is has lowest priorty, 10 is default priority on teh system)
+  "priority" => "10",          // ffmpeg encoding process processor priority: -20 to 19 (19 is has lowest priorty, 10 is default sytem process priority)
                                // -20 is critical priority ( My mouse doesn't move.. oh there it goes.. oh no it's not moving again.)
 
   "stop" => "/tmp/hevc.stop",   // If this file exists the process will exist after finishing with the current file. Required to have it
@@ -33,7 +33,7 @@ $args = array(
                                 //   from: Jim's Movie (1997) [...].mkv
                                 //     to: Jims Movie (1997).mkv
 
-"display_banner" => true,       // Display the ffHEVC banner on run
+  "display_banner" => true,     // Display the ffHEVC banner on run
 
   "my_config" => 'hevc-nvenc-mkv', // Map to the "opt" configuration below
 

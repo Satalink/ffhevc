@@ -246,7 +246,7 @@ function getDefaultOptions($args, $location_config) {
   $options['args']['skip'] = false;
   $options['args']['override'] = false;
   $options['args']['followlinks'] = false;
-  $options['args']['exclude'] = false;  // if true, the xml file will be flagged exclude for the processing the media.
+  $options['args']['exclude'] = false;  // if true, the xml file will be flagged exclude for the processed the media.
   $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig.ext)
   $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
   $options['args']['deletecorrupt'] = false; // if true, corrupt files will be automatically deleted. (can be annoying if you're not fully automated)

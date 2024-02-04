@@ -6,17 +6,9 @@
  * 
  */
 
-;
 function processItem($dir, $item, $options, $args, $stats) {
-
-  $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");
-  if (!in_array($file['extension'], $options['args']['extensions'])) {
-    return($stats);
-  }
-
-  $file = remove_illegal_chars($file, $options);
-  checkProcessCount($args, $options, $stats);   //Don't melt my CPU!
-  
+ 
+  $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");  
   // Stop Detected
   if (file_exists($args['stop'])) {
     return($stats);
@@ -25,6 +17,19 @@ function processItem($dir, $item, $options, $args, $stats) {
   if (!isset($file['extension']) || !in_array(strtolower($file['extension']), $options['args']['extensions'])) {
     return($stats);
   }
+  //  Show Running Progress
+  $stats['processed']++;
+  if ($args['show_progress']) {
+    $percent = round((( $stats['processed'] / $stats['total_files'] ) * 100 ), 0);
+    if ($percent > 0) {
+      if($percent != $stats['percent']) {
+        $stats['percent'] = $percent;
+        echo "   " . $percent . " %\r";
+      }
+    }
+  }
+
+//  TODO Where is this being reset?
   if ($options['args']['exclude']) {
     // If --exclude is used command line parameter
     list($file, $info) = ffprobe($file, $options);
@@ -35,9 +40,6 @@ function processItem($dir, $item, $options, $args, $stats) {
   }
 
   // Process Non-Excluded Files
-  if (isset($stats['processed'])) {  
-    $stats['processed']++;
-  }
   // Convert original "accepted" format to Matroska (mkv) 
   // acceptible formats configured in $options['args']['extensions']
   if ($file['extension'] !== "mkv") {
@@ -81,6 +83,8 @@ function processItem($dir, $item, $options, $args, $stats) {
     }
   }
 
+
+
   $curdir = getcwd();
   chdir($file['dirname']);  
 
@@ -88,7 +92,7 @@ function processItem($dir, $item, $options, $args, $stats) {
   $options['info']['title'] = "'" . str_replace("'", "\'", $file['filename']) . "'";
   $options['info']['timestamp'] = date("Ymd.His");
   list($file, $info) = ffprobe($file, $options);
-
+  $file = remove_illegal_chars($file, $options);
   if (empty($info) || file_exists($args['stop'])) {
     return($stats);
   }
@@ -97,7 +101,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     return($stats);
   }
 
-// check the file's timestamp (Do not process if file time is too new. Still unpacking?)
+  // check the file's timestamp (Do not process if file time is too new. Still unpacking?)
   if (filemtime($file['basename']) > time()) {
     touch($file['basename'], time()); //file time is in the future (created overseas?), set it to current time.
   }
@@ -227,7 +231,7 @@ function processItem($dir, $item, $options, $args, $stats) {
       if ($status == 255) {
         //status(255) => CTRL-C 
         stop($args, time());
-        return;
+        return($stats);
       }
     }
   }

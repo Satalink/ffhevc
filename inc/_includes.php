@@ -14,6 +14,7 @@ $stats = array(
   'reEncoded' => 0,
   'byteSaved' => 0,
   'starttime' => time(),
+  'percent' => 0,
  );
 
 require __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'conf' . DIRECTORY_SEPARATOR . 'settings.php';

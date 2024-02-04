@@ -6,7 +6,10 @@
  */
 
 function processRecursive($dir, $options, $args, $stats) {
-  $result = array();
+  if (!isset($stats['total_files'])) {    
+    exec("find . -name \"*.[m][kp][4v]\"|wc -l", $tf);    
+    $stats['total_files'] = (int) $tf[0];
+  }
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
     if (file_exists($args['stop'])) {
@@ -20,7 +23,7 @@ function processRecursive($dir, $options, $args, $stats) {
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
       if (!preg_match("/_UNPACK_/", $item)) {
         cleanXMLDir($dir, $options);
-        $result["$dir" . DIRECTORY_SEPARATOR . "$item"] = processRecursive($dir . DIRECTORY_SEPARATOR . $item, $options, $args, $stats);
+        $stats = processRecursive($dir . DIRECTORY_SEPARATOR . $item, $options, $args, $stats);
       }
     }
     else {
