@@ -1,10 +1,10 @@
-#!/usr/bin/phpdbg -qrr
+#!/usr/bin/php
 <?php
 /**
  * 
  */
 
-$VERSION = 20240131.2211;
+$VERSION = 20240204.0229;
 
 require __DIR__ . DIRECTORY_SEPARATOR . 'inc' . DIRECTORY_SEPARATOR .'_includes.php';
  declare(ticks = 1);
