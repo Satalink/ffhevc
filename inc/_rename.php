@@ -33,7 +33,6 @@ function rename_PlexStandards($file, $options, $info) {
       $filespecs[1] = $episode[0][0];
       $filename['newtitle'] = preg_split('/(\s|\.|\-|\_)/', $filespecs[0][0]);
       $filename['year'] = isset($year) ? preg_replace('/\(|\)/', "", $year) : null;
-
     } 
     elseif (preg_match('/\(?(19|20)\d{2}(\.?|\-?\s?)\d{2}(\.?|\-?|\s?)\d{2}\)?/', $file['filename'])) {
       $filename['type'] = "dated";        
@@ -99,10 +98,14 @@ function rename_PlexStandards($file, $options, $info) {
 
     if (file_exists($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'])){
       $titlename = empty($title) ? '' : ltrim(trim(implode(' ', $title)), " ");
-      $titlename .= empty($filename['year']) ? '' : " ($year)";
       if ($filename['type'] == "series") {
+        if(isset($year)) {
+          $titlename = trim(preg_replace('/(\(|\)|(' . $year . '))?/', '', $titlename));
+        }
+        $titlename .= empty($filename['year']) ? '' : " ($year)";
         $titlename .= empty($specs) ? '' : " - " . ltrim(trim(implode(' ', $specs)), " ");
       } else {
+        $titlename .= empty($filename['year']) ? '' : " ($year)";
         $titlename .= empty($specs) ? '' : " - [ " . ltrim(trim(str_replace(["[","]"], '', (implode(' ', $specs ))), " ") . " ]");
       }
       if ($file['filename'] !== "$titlename") {
