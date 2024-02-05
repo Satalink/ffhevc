@@ -333,6 +333,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
         $file = rename_byCodecs($file, $options, $info);
         $file = rename_PlexStandards($file, $options, $info);
         $options['args']['exclude'] = true;
+        print charTimes(80, "#", "blue") . "\n";
       }
     }
   }
