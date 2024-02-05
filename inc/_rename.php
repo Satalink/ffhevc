@@ -120,7 +120,8 @@ function rename_PlexStandards($file, $options, $info) {
 }
 
 
-function rename_byCodecs($file, $options, $info, $resolution=null, $acodec=null, $vcodec=null, $profile=null) {
+function rename_byCodecs($file, $options, $info) {
+
   if ($options['args']['rename']) {
     $filename    = $file['filename'];
     $resolutions = array('480p', '720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
@@ -128,10 +129,10 @@ function rename_byCodecs($file, $options, $info, $resolution=null, $acodec=null,
     $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
     $profiles    = array('Raw-HD', 'BR-Disk', 'Remux', 'Bluray', 'WebDL', 'WebRip', 'HDTV');  // Radarr Quality Profiles
 
-    $resolution  = isset($resolution) ?: get_resolution($info['video']['height']);
-    $vcodec      = isset($vcodec) ?: $options['video']['codec_long_name'];
-    $acodec      = isset($acodec) ?: $options['audio']['codec'];
-    $profile     = isset($profile) ?: $options['video']['profile'];
+    $resolution  = get_resolution($info['video']['height']);
+    $vcodec      = $options['video']['codec_long_name'];
+    $acodec      = $options['audio']['codec'];
+    $profile     = $options['video']['profile'];
 
     $filename_set = false;
     if (preg_match("/\([1-2]\d{3}\)$/", $filename)) {

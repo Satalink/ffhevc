@@ -6,7 +6,7 @@
  * 
  */
 
-function processItem($dir, $item, $options, $args, $stats) {
+function processItem($dir, $item, $options, $args, $stats, $info=[]) {
  
   $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");  
   // Stop Detected
@@ -75,12 +75,12 @@ function processItem($dir, $item, $options, $args, $stats) {
         unlink($file['basename']);
         $mkv_filename = $mkv_file['filename'] . "." . $options['args']['extension'];
         touch($mkv_filename, $mtime); //retain original timestamp
-        list($file, $info) = ffprobe($mkv_file, $options);            
+        list($file, $info) = ffprobe($mkv_file, $options);
         $options = ffanalyze($info, $options, $args, $dir, $mkv_file);
         if (empty($options)) {
           return($stats);
         }
-        $stats = processItem($dir, $mkv_filename, $options, $args, $stats);
+        $stats = processItem($dir, $mkv_filename, $options, $args, $stats, $info);
         return($stats);
       } 
     }
@@ -95,6 +95,9 @@ function processItem($dir, $item, $options, $args, $stats) {
   $options['info']['title'] = "'" . str_replace("'", "\'", $file['filename']) . "'";
   $options['info']['timestamp'] = date("Ymd.His");
   list($file, $info) = ffprobe($file, $options);
+  if ($info['format']['exclude']) {
+    return($stats);
+  }
   $file = remove_illegal_chars($file, $options);
   if (empty($info) || file_exists($args['stop'])) {
     return($stats);
@@ -290,7 +293,7 @@ function processItem($dir, $item, $options, $args, $stats) {
     if (empty($reasons) || ($options['args']['force'])) {
       if (file_exists($file['filename'] . $options['args']['extension'])) {
         list($file, $info) = ffprobe($file, $options);
-        $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
+        $file = rename_byCodecs($file, $options, $info);
         $file = rename_PlexStandards($file, $options, $info);
         touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination']) && file_exists($options['args']['destination'] . DIRECTORY_SEPARATOR)) {
@@ -323,16 +326,11 @@ function processItem($dir, $item, $options, $args, $stats) {
       if (file_exists($file['filename'] . ".hevc")) {
         unlink($file['filename'] . ".hevc");
       }
-      if (file_exists($file['basename']) && 
-          file_exists($fileorig['basename']) ) {
+      if (file_exists($file['basename']) && file_exists($fileorig['basename']) ) {
         unlink($file['basename']);
-        if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
-          unlink("./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml");
-        }
         rename($fileorig['basename'], $file['basename']);
-        $file = $fileorig;
-        $info = $inforig;
-        $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
+        $info = ffprobe($file, $options)[1];
+        $file = rename_byCodecs($file, $options, $info);
         $file = rename_PlexStandards($file, $options, $info);
         $options['args']['exclude'] = true;
       }
@@ -341,7 +339,7 @@ function processItem($dir, $item, $options, $args, $stats) {
 
   if ($options['args']['exclude']) {
     if (empty($info)) {
-      $info = ffprobe($file, $options);
+      $info = ffprobe($file, $options)[1];
     }
       $options = setXmlExclude($file, $options, $info);
   }

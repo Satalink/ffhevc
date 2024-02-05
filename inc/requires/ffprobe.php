@@ -13,12 +13,12 @@ function ffprobe($file, $options) {
   $xml_file = "./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml";
   $info = array();
   $xml = null;
-  if (!file_exists("./.xml")) {
+  if (!file_exists( "." . DIRECTORY_SEPARATOR . ".xml")) {
     mkdir("./.xml");
   }
   if (!file_exists("$xml_file")) {
     $action = "PROBED";
-    $cmdln = "ffprobe $exec_args '". $file['basename'] . "' > './.xml/" . $file['filename'] . ".xml'";
+    $cmdln = "ffprobe $exec_args '". $file['basename'] . "' > '." . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml'";
     exec("$cmdln");
     if (!file_exists("$xml_file")) {
       print ansiColor("red") . "error: Could not create ffprobe xml.  Check that ffprobe is exists, is executable, and in the system search path\n" . ansiColor();
@@ -30,12 +30,10 @@ function ffprobe($file, $options) {
   }
   if (file_exists("$xml_file")) {
     $xml = simplexml_load_file("$xml_file");
-    $xml_filesize = getXmlAttribute($xml->format, "size");
+    $xml_filesize = getXmlAttribute($xml->format, "size") ? getXmlAttribute($xml->format, "size") : 0;
+    $options['args']['exclude'] = getXmlAttribute($xml->format, "exclude") ? getXmlAttribute($xml->format, "exclude") : false;
   }
-  if (!isset($xml) ||
-    empty($xml) ||
-    (!empty($xml_filesize) && (int) $xml_filesize != filesize($file['basename']))
-  ) {
+  if (!isset($xml) || empty($xml) || ((int) $xml_filesize !== (int) filesize($file['basename']))) {
     print "Stale xml detected.  Initiating new probe...\n";
     unlink("$xml_file");
     list($file, $info) = ffprobe($file, $options);
