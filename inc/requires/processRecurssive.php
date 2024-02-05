@@ -10,6 +10,7 @@ function processRecursive($dir, $options, $args, $stats) {
     exec("find . -name \"*.[m][kp][4v]\"|wc -l", $tf);    
     $stats['total_files'] = (int) $tf[0];
   }
+
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
     if (file_exists($args['stop'])) {

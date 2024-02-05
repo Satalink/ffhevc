@@ -31,9 +31,14 @@ function cleanXMLDir($dir, $options) {
     return((string) $object[$attribute]);
   }  
 
-  function setXmlExclude($file, $options) {
-    setXmlFormatAttribute($file, "exclude");
-    $options['args']['exclude'] = false;
+  function setXmlExclude($file, $options, $info=[]) {
+    if (empty($info)) {
+      $info = ffprobe($file, $options)[1];
+    }
+    if (!$info['format']['exclude']) {
+      setXmlFormatAttribute($file, "exclude");
+    }
+      $options['args']['exclude'] = false;
     return($options);
   }
 

@@ -14,33 +14,40 @@ function processItem($dir, $item, $options, $args, $stats) {
     return($stats);
   }
   // Exclusions
-  if (!isset($file['extension']) || !in_array(strtolower($file['extension']), $options['args']['extensions'])) {
+  if (
+    !isset($file['extension']) || 
+    !in_array(strtolower($file['extension']), $options['args']['extensions'])
+     ) {
     return($stats);
   }
-  //  Show Running Progress
+
   $stats['processed']++;
+
+  if ($options['args']['exclude']) {  // --exclude flag
+    setXmlExclude($file, $options);
+    return($stats);
+  }
+
+  //  Show Running Progress
   if ($args['show_progress']) {
+    $stats['total_files'] = !empty($stats['total_files']) ? $stats['total_files'] : 1;
     $percent = round((( $stats['processed'] / $stats['total_files'] ) * 100 ), 0);
     if ($percent > 0) {
       if($percent != $stats['percent']) {
         $stats['percent'] = $percent;
-        echo "   " . $percent . " %\r";
+        print "   " . $percent . " %\r";
       }
     }
-  }
+  }  
 
-  if ($options['args']['exclude']) {
-    $options = setXmlExclude($file, $options);
-    return($stats);
-  }
 
   // Process Non-Excluded Files
   //
   // Convert original "accepted" format to $options['args']['extension'] ? Matroska (mkv) 
   // acceptible formats configured in $options['args']['extensions']
   if ($file['extension'] !== $options['args']['extension']) {
-    echo ansiColor("red") . $file['filename'] . "." . $file['extension'] . "\n" . ansiColor();
-    echo ansiColor("blue") . "Container Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . $options['args']['extension'] ."\n" . ansiColor();
+    print ansiColor("red") . $file['filename'] . "." . $file['extension'] . "\n" . ansiColor();
+    print ansiColor("blue") . "Container Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . $options['args']['extension'] ."\n" . ansiColor();
     // [quiet, panic, fatal, error, warning, info, verbose, debug]
     $subs = $file['extension'] === "mp4" ? "-sn " : ""; //Remove subs from mp4 files to prevent encoding issues
     $cmdln = "ffmpeg " . 
@@ -292,7 +299,7 @@ function processItem($dir, $item, $options, $args, $stats) {
           rename($file['filename'] . "." . $options['args']['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
         }
       }
-      echo ansiColor("blue") . "SIZE-STAT: " . $file['basename'] . " ( " . 
+      print ansiColor("blue") . "SIZE-STAT: " . $file['basename'] . " ( " . 
         "[orig] " . ansiColor("red") . formatBytes(filesize($fileorig['basename']), 2, true) . ansiColor("blue") . " - " .
         "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " . 
         "[diff] " . ansiColor("green") . formatBytes(filesize($fileorig['basename']) - ($info['format']['size']), 2, true) . ansiColor("blue") . " " .
@@ -319,24 +326,25 @@ function processItem($dir, $item, $options, $args, $stats) {
       if (file_exists($file['basename']) && 
           file_exists($fileorig['basename']) ) {
         unlink($file['basename']);
+        if (file_exists("./.xml/" . $file['filename'] . ".xml")) {
+          unlink("./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml");
+        }
         rename($fileorig['basename'], $file['basename']);
+        $file = $fileorig;
         $info = $inforig;
         $file = rename_byCodecs($file, $options, $info, $info['video']['width'], $info['video']['codec_name'], $info['audio']['codec_name']);
         $file = rename_PlexStandards($file, $options, $info);
         $options['args']['exclude'] = true;
-        if (file_exists("./.xml/" . $fileorig['filename'] . ".xml")) {
-          //Shouldn't exist, but if it does -- delete it
-          unlink("./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml");
-        }
       }
     }
   }
 
   if ($options['args']['exclude']) {
-    if (!empty($info)) {
-      $options = setXmlExclude($file, $options);
+    if (empty($info)) {
+      $info = ffprobe($file, $options);
     }
-   }
+      $options = setXmlExclude($file, $options, $info);
+  }
 
   if ($options['args']['cooldown'] > 0) {
     print ansiColor("red") . "Cooldown period: " . $options['args']['cooldown'] . " seconds.\n" . ansiColor();

@@ -183,7 +183,7 @@ function getCommandLineOptions($options, $args) {
     if (array_key_exists("scale", $cmd_ln_opts)) {
       $options['video']['scale'] = $cmd_ln_opts['scale'];
       if (empty($cmd_ln_opts['scale'])) {
-        echo "usage: option --scale=[value]";
+        print "usage: option --scale=[value]\n";
         exit;
       }
     }

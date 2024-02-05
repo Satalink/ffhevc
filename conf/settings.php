@@ -59,6 +59,6 @@ $args = array(
 if (file_exists($args['media_paths_file'])) {
   require_once $args['media_paths_file'];
 } else {
-  print $args['medeia_paths_file'] . " not found.\n" .
-  "Please copy the example and configure it for your media directories.\n";
+  print ansiColor("red") . $args['media_paths_file'] . " not found.\n" . 
+  ansiColor("blue") . "Please copy the example and configure it for your media directories.\n" . ansiColor();
 }
