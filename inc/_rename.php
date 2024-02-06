@@ -2,7 +2,7 @@
 /**
 *
 */
-function rename_PlexStandards($file, $options, $info) {
+function rename_PlexStandards($file, $options) {
   if ($options['args']['rename']) {
     $excluded_words = array('a', 'an', 'and', 'at', 'but', 'by', 'else', 'etc', 'for', 'from', 'if', 'in', 'into', 'is', 'of', 'or', 'nor', 'on', 'to', 'that', 'the', 'then', 'when', 'with');
     $allcap_words = array("us", "usa", "HEVC", "AVC", "acc", "ac3", "eac3", "hdr", "dvd", "sdtv", "dvd-r", "hdtv", "fbi", "pd", "i", "ii", "iii", "iv", "v", "tv", "vi", "vii", "viii", "ix", "x", "xl");
@@ -28,9 +28,16 @@ function rename_PlexStandards($file, $options, $info) {
     // TV Show or Movie?
     if (preg_match('/\d+(e|x)\d+/i', $file['filename'])) {     
       $filename['type'] = "series";
-      $filespecs = preg_split('/s?\d+(e|x)\d+\-?(e?|x?\d+)/i', $file['filename'], 0);
-      preg_match_all('/s?\d+(e|x)\d+\-?(e?|x?\d+)/i', $file['filename'], $episode, PREG_PATTERN_ORDER);
-      $filespecs[1] = $episode[0][0];
+      if (preg_match('/\[.*\]/i', $file['filename'])) {
+        $filespecs = preg_split('/\[.*\]/i', $file['filename'], 0);
+        preg_match_all('/\[.*\]/i', $file['filename'], $episode, PREG_PATTERN_ORDER);
+        $filespecs[1] = $episode[0][0];
+      }
+      else {
+        $filespecs = preg_split('/s?\d+(e|x)\d+\-?(e?|x?\d+)/i', $file['filename'], 0);
+        preg_match_all('/s?\d+(e|x)\d+\-?(e?|x?\d+)/i', $file['filename'], $episode, PREG_PATTERN_ORDER);
+        $filespecs[1] = $episode[0][0];
+      }
       $filename['newtitle'] = preg_split('/(\s|\.|\-|\_)/', $filespecs[0][0]);
       $filename['year'] = isset($year) ? preg_replace('/\(|\)/', "", $year) : null;
     } 
@@ -58,6 +65,9 @@ function rename_PlexStandards($file, $options, $info) {
 
     foreach ($filename['newtitle'] as $word) {
       $word = preg_replace('/\s+/', '', $word);
+      if (empty($word)) {
+        continue;
+      }
       if (!ctype_upper($word) && !in_array($word, $allcap_words)) {
         $word = strtolower($word);
       }

@@ -294,7 +294,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
       if (file_exists($file['filename'] . $options['args']['extension'])) {
         list($file, $info) = ffprobe($file, $options);
         $file = rename_byCodecs($file, $options, $info);
-        $file = rename_PlexStandards($file, $options, $info);
+        $file = rename_PlexStandards($file, $options);
         touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
         if (isset($options['args']['destination']) && file_exists($options['args']['destination'] . DIRECTORY_SEPARATOR)) {
           //move file to destination path defined in (external_ini_file)
@@ -331,7 +331,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
         rename($fileorig['basename'], $file['basename']);
         $info = ffprobe($file, $options)[1];
         $file = rename_byCodecs($file, $options, $info);
-        $file = rename_PlexStandards($file, $options, $info);
+        $file = rename_PlexStandards($file, $options);
         $options['args']['exclude'] = true;
         print charTimes(80, "#", "blue") . "\n";
       }

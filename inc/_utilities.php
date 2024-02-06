@@ -13,13 +13,11 @@ function seconds_toTime($seconds) {
 }
 
 function checkProcessCount($args, $options, $stats) {
-  if(isset($stats['stop'])) {
-    exit;
-  }
   exec("ps -efW|grep -v grep|grep ffmpeg|wc -l", $ffcount);
   exec("ps -efW|grep -v grep|grep mkvmerge|wc -l", $mkvmcount);
 
   if ($ffcount[0] > $args['max_processes'] && !$options['args']['force'] && !$options['args']['test']) {
+  print_r($ffcount);
     exit("ERR: $ffcount FFMPEG processes are running, max processes (" . ansiColor("red") . $args['max_processes'] .ansiColor() . ") reached\n");
   }
   elseif ($mkvmcount[0] > $args['max_processes'] && !$options['args']['force'] && !$options['args']['test']) {
