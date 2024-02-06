@@ -1,7 +1,7 @@
 # FFhevc
 
 ## First Time User ##
-Copy some media to a test directory and run ffhevc against a copy.  Adjust the settings and configure your meidia_path_keys to suit your needs.  USE AT YOUR OWN RISK!
+Copy some media to a test directory and run ffhevc against a copy.  Adjust the settings and configure your media_path_keys to suit your needs.  USE AT YOUR OWN RISK!
 
 ## Table of Contents
 
@@ -28,10 +28,6 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
   <li>Windows (with <a href="" target=_blank >Cygwin</a>), Linux, or MacOS</li>
   <li>php 7.3.7+</li>
     <ul> <i>modules</i>:
-      <li>ctype</li>
-      <li>xml</li>
-      <li>xmlreader</li>
-      <li>xmlwriter</li>
       <li>SimpleXML</li>
     </ul>
   <li><a href="https://ffmpeg.org/download.html" target=_blank>FFmpeg</a></li>

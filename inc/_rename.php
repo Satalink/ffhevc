@@ -68,7 +68,7 @@ function rename_PlexStandards($file, $options) {
       if (empty($word)) {
         continue;
       }
-      if (!ctype_upper($word) && !in_array($word, $allcap_words)) {
+      if (preg_match('/.*[A-Z].*/', $word) && !in_array($word, $allcap_words)) {
         $word = strtolower($word);
       }
       if ((!in_array($word, $excluded_words) && !in_array($word, $allcap_words) && 
