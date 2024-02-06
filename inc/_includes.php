@@ -30,6 +30,17 @@ foreach ($includeDirs as $includeDir) {
   }
 }
 
+// Check required PHP modules
+$required_php_modules = array("SimpleXML");
+$loaded_php_modules = get_loaded_extensions();
+foreach ($required_php_modules as $rphpm) {
+  if (!in_array($rphpm, $loaded_php_modules)) {
+    print ansiColor("blue") . "\n\n" . charTimes("#", 40) . "\n";
+    print ansiColor("red") . "ERROR: php module '".$rphpm." not installed\n" . ansiColor();
+    print ansiColor("white") . "$> php -m" . ansiColor("blue") . "  to see loaded php modules";
+  }
+}
+
 $options = getDefaultOptions($args, $location_config);  //Initialize options
 $self = explode(DIRECTORY_SEPARATOR, $_SERVER['PHP_SELF']);
 $lastkey = key(array_slice($self, -1, 1, true));
