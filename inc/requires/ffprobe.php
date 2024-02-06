@@ -33,7 +33,7 @@ function ffprobe($file, $options) {
     $xml_filesize = getXmlAttribute($xml->format, "size") ? getXmlAttribute($xml->format, "size") : 0;
     $options['args']['exclude'] = getXmlAttribute($xml->format, "exclude") ? getXmlAttribute($xml->format, "exclude") : false;
   }
-  if (!isset($xml) || empty($xml) || ((int) $xml_filesize !== (int) filesize($file['basename']))) {
+  if (!isset($xml) || empty($xml) || (file_exists('basename') && (int) $xml_filesize !== (int) filesize($file['basename']))) {
     print "Stale xml detected.  Initiating new probe...\n";
     unlink("$xml_file");
     list($file, $info) = ffprobe($file, $options);

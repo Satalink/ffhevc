@@ -3,7 +3,7 @@
  * 
  */
 
-function cleanXMLDir($dir, $options) {
+function cleanXMLDir($dir, $options, $quiet=false) {
   // clean xml for nonexist media
   global $cleaned;
   if (!in_array($dir, $cleaned)) {
@@ -17,7 +17,7 @@ function cleanXMLDir($dir, $options) {
           $xfile = pathinfo($xmlfile);
           $mediafile = str_replace("'", "\'", $xfile['filename']) . "." . $options['args']['extension'];
           if (!empty($xmlfile) && !file_exists("$mediafile") && file_exists("./.xml" . DIRECTORY_SEPARATOR . "$xmlfile")) {
-            print ansiColor("blue") . "Cleaned XML for NonExists: $dir" . DIRECTORY_SEPARATOR . $mediafile . "\n" . ansiColor();
+            if(!$quiet) print ansiColor("blue") . "Cleaned XML for NonExists: $dir" . DIRECTORY_SEPARATOR . $mediafile . "\n" . ansiColor();
             unlink("./.xml" . DIRECTORY_SEPARATOR . $xmlfile);
           }
         }
