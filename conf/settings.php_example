@@ -26,7 +26,7 @@ $args = array(
 
   "extension" => "mkv",         // The desired media container format of your media files.
   
-  "rename" => true,             // Rename files to standard filenaming specification
+  "rename" => false,             // Rename files to standard filenaming specification
                                 // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]
                                 //
                                 //  from:  movie.title.1999.tt1234567890.Bluray.h264.ac3.mkv
