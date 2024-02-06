@@ -124,7 +124,7 @@ function rename_byCodecs($file, $options, $info) {
 
   if ($options['args']['rename']) {
     $filename    = $file['filename'];
-    $resolutions = array('480p', '720p', '1080p', '2160p', 'SD', 'HD', 'UHD');
+    $resolutions = array('480p', '720p', '1080p', '2160p', ' SD', ' HD', ' UHD');
     $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265", "vc1", "hevc");
     $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
     $profiles    = array('Raw-HD', 'BR-Disk', 'Remux', 'Bluray', 'WebDL', 'WebRip', 'HDTV');  // Radarr Quality Profiles
