@@ -34,11 +34,12 @@ function cleanXMLDir($dir, $options, $quiet=false) {
   function setXmlExclude($file, $options, $info=[]) {
     if (empty($info)) {
       $info = ffprobe($file, $options)[1];
+      setXmlFormatAttribute($file, "mkvmerged");
     }
     if (!$info['format']['exclude']) {
       setXmlFormatAttribute($file, "exclude");
     }
-      $options['args']['exclude'] = false;
+//      $options['args']['exclude'] = false;
     return($options);
   }
 
