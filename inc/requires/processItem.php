@@ -35,7 +35,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
     if ($percent > 0) {
       if($percent != $stats['percent']) {
         $stats['percent'] = $percent;
-        print "   " . $percent . " %\r";
+        print "   (" . $stats['total_files'] . ") "  . $percent . " %\r";
       }
     }
   }  
