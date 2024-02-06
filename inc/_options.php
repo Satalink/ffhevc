@@ -44,7 +44,7 @@
       exit;
     }
 
-    //Defined Key Scan and Process
+    //Defined Key, Scan, and Process
     if (isset($args['key'])) {
       $location = str_replace(" ", "\ ", $options['locations'][$args['key']]);
       $key = $args['key'];
@@ -75,6 +75,9 @@
       $args['key'] = $options['args']['key'];
     }
     $dirs = array($args['key'] => $dir);
+  }
+  if (!isset($dirs)) {
+    $dirs = array(".");
   }
   return array($options, $args, $dirs, $stats);
 }
