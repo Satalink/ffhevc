@@ -29,8 +29,10 @@ $args = array(
   "rename" => true,             // Rename files to standard filenaming specification
                                 // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]
                                 //
-                                //  from:  movie.title.1999.Bluray.h264.ac3.mkv
-                                //    to:  Movie Title (1999) [WebDL x265 EAC3].mkv
+                                //  from:  movie.title.1999.tt1234567890.Bluray.h264.ac3.mkv
+                                //    to:  Movie Title (1999) [ tt123456780 WebDL x265 EAC3 ].mkv
+                                //
+                                // Plex uses the information in brackets for matching and media specs (if provided).
 
   "remove_illegal_chars"  => true,
                                 // Remove single quotes from filenames. (Not part of the renaming function.)
