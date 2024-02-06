@@ -307,7 +307,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
         "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " . 
         "[diff] " . ansiColor("green") . formatBytes(filesize($fileorig['basename']) - ($info['format']['size']), 2, true) . ansiColor("blue") . " " .
         ")\n" . ansiColor();
-      print charTimes(80, "#", "blue") . "\n";
+      print charTimes(80, "#", "blue") . "\n\n";
       if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
         $stats['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
         $stats['reEncoded']++;
@@ -333,7 +333,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
         $file = rename_byCodecs($file, $options, $info);
         $file = rename_PlexStandards($file, $options);
         $options['args']['exclude'] = true;
-        print charTimes(80, "#", "blue") . "\n";
+        print charTimes(80, "#", "blue") . "\n\n";
       }
     }
   }
