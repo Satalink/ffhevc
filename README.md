@@ -27,7 +27,7 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
 <ul>
   <li>Windows (with <a href="" target=_blank >Cygwin</a>), Linux, or MacOS</li>
   <li>php 7.3.7+</li>
-    <ul> modules
+    <ul> <i>modules</i>:
       <li>ctype</li>
       <li>xml</li>
       <li>xmlreader</li>
