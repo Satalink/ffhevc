@@ -126,6 +126,7 @@ function rename_PlexStandards($file, $options) {
       }
     }
   }
+  cleanXMLDir($file['dirname'], $options);
   return($file);
 }
 
