@@ -41,7 +41,11 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
 
 ### Installing
 
-  git clone ffmpeg onto your computer. 
+  PHP
+    `$> php -v`  should meet the minimum version mentioned above.
+    `$> php -m`  should show the required php modules mentioned above.
+
+  GIT CLONE ffmpeg onto your computer. 
   `$> git clone https://github.com/Satalink/ffhevc.git ffhevc`
   
   Create a symbolic link to the ffmpeg.php file somewhere that is in your $PATH: (~/bin/ffhevc) for example.  You can name the symbolic link whatever you like (I use `hevc`).. whatever works for you.  Just make sure you create the link somewhere in your $PATH.
