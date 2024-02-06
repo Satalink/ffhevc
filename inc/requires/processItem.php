@@ -231,7 +231,8 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
     print "\n\n" . ansiColor("green") . "$cmdln\n\n" . ansiColor();
   }
   if (!$options['args']['test'] && !file_exists($args['stop'])) {
-    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor("yellow") . ", runtime=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
+    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor("yellow") . "\n";
+    print charTimes(39, " ") . "runtime=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
     exec("$cmdln", $output, $status);
     if($status === 255) {
       if ($status == 255) {

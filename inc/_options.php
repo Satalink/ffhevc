@@ -254,8 +254,8 @@ function getDefaultOptions($args, $location_config) {
   $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
   $options['args']['deletecorrupt'] = false; // if true, corrupt files will be automatically deleted. (can be annoying if you're not fully automated)
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
-  $options['args']['language'] = "eng";  // Keep this language track
-  $options['args']['filter_foreign'] = true; // filters out all other language tracks that do not match default language track (defined above) : requires mkvmerge in $PATH
+  $options['args']['filter_foreign'] = !empty($args['filter_foreign']) ? $args['filter_foreign'] : null;
+  $options['args']['language'] = !empty($args['language']) ? $args['language'] : null;
   $options['args']['delay'] = 0; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "quiet";  // [quiet, panic, fatal, error, warning, info, verbose, debug]

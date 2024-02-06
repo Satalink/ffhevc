@@ -130,7 +130,6 @@ function rename_PlexStandards($file, $options) {
   return($file);
 }
 
-
 function rename_byCodecs($file, $options, $info) {
 
   if ($options['args']['rename']) {
@@ -141,8 +140,9 @@ function rename_byCodecs($file, $options, $info) {
     $profiles    = array('Raw-HD', 'BR-Disk', 'Remux', 'Bluray', 'WebDL', 'WebRip', 'HDTV');  // Radarr Quality Profiles
 
     $resolution  = get_resolution($info['video']['height']);
-    $vcodec      = $options['video']['codec_long_name'];
-    $acodec      = $options['audio']['codec'];
+    $vcodec      = isset($info['video']['codec_name']) ? $info['video']['codec_name'] : $options['video']['codec_long_name'];
+    $vcodec      = preg_match('/(hevc)/', $vcodec) ? "x265" : $vcodec;
+    $acodec      = isset($info['audio']['codec_name']) ? $info['audio']['codec_name'] : $options['audio']['codec'];
     $profile     = $options['video']['profile'];
 
     $filename_set = false;

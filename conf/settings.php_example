@@ -34,6 +34,12 @@ $args = array(
                                 //
                                 // Plex uses the information in brackets for matching and media specs (if provided).
 
+
+  "filter_foreign" => true,     // filters out all other language tracks that do not match default language track (defined below "language") 
+                                // ** requires mkvmerge in $PATH
+  "language" => "eng",          // Keep this language track
+
+
   "remove_illegal_chars"  => true,
                                 // Remove single quotes from filenames. (Not part of the renaming function.)
                                 //   from: Jim's Movie (1997) [...].mkv

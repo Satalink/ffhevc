@@ -61,3 +61,13 @@ function is_between(int $min, int $max, int $val){
   return false;
 }
 
+function step() {
+  echo "continue? [Y/n]: ";
+  $handle = fopen ("php://stdin","r");
+  $line = fgets($handle);
+  if(trim(preg_match('/[y]/i', $line))) {
+      echo "ABORTING!\n";
+      exit;
+  }
+  fclose($handle);
+}
