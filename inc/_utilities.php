@@ -14,14 +14,13 @@ function seconds_toTime($seconds) {
 
 function checkProcessCount($args, $options, $stats) {
   exec("ps -efW|grep -v grep|grep ffmpeg|wc -l", $ffcount);
-  exec("ps -efW|grep -v grep|grep mkvmerge|wc -l", $mkvmcount);
+  exec("ps -efW|grep -v grep|grep mkvmerge|wc -l", $mergecount);
 
-  if ($ffcount[0] > $args['max_processes'] && !$options['args']['force'] && !$options['args']['test']) {
-  print_r($ffcount);
-    exit("ERR: $ffcount FFMPEG processes are running, max processes (" . ansiColor("red") . $args['max_processes'] .ansiColor() . ") reached\n");
+  if ($ffcount[0] >= $args['max_processes'] && !$options['args']['force'] && !$options['args']['test']) {
+    exit(ansiColor("red") ."ERR: $ffcount[0] FFMPEG processes are running, max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
   }
-  elseif ($mkvmcount[0] > $args['max_processes'] && !$options['args']['force'] && !$options['args']['test']) {
-    exit("ERR: $mkvmcount MKVMERGE processes are running, , max processes (" . ansiColor("red") . $args['max_processes'] .ansiColor() . ") reached\n");
+  elseif ($mergecount[0] >= $args['max_processes'] && !$options['args']['force'] && !$options['args']['test']) {
+    exit(ansiColor("red") . "ERR: $mergecount[0] MKVMERGE processes are running, , max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
   }
 }
 
