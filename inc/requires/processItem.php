@@ -8,11 +8,13 @@
 
 function processItem($dir, $item, $options, $args, $stats, $info=[]) {
  
-  $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");  
+  $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");
+  $mkvmerge_temp_ext = "." . $file['extension'] . "." . "merge";
   // Stop Detected
-  if (file_exists($args['stop'])) {
+  if (file_exists($options['args']['stop'])) {
     return($stats);
   }
+
   // Exclusions
   if (
     !isset($file['extension']) || 
@@ -23,10 +25,34 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
 
   $stats['processed']++;
 
-  if ($options['args']['exclude']) {  // --exclude flag
-    setXmlExclude($file, $options);
-    return($stats);
+  // Set Exclude tag in media file
+  if ($options['args']['exclude'] &&
+      isset($info) && !$info['format']['exclude'] &&
+      !$options['args']['override']
+     ) {  
+    $tag_data = [ array( "name" => "exclude", "value" => "1" )];
+    $status = setMediaFormatTag($file, $tag_data);
+    return($stats); 
   }
+  // Set MKVmerged tag in media file
+  if ( !isset($options['args']['nomkvmerge']) && isset($info['format']['mkvmerged']) && !$info['format']['mkvmerged'] &&
+      !$options['args']['override']
+     ) {  
+    $tag_data = [ array( "name" => "mkvmerged", "value" => "1" )];
+    $status = setMediaFormatTag($file, $tag_data);
+    return($stats); 
+  }
+  // Set AudioBoost tag in media file
+  if ($options['args']['audioboost'] &&
+      isset($info['audio']['audioboost']) && !$info['audio']['audioboost'] &&
+      !$options['args']['override']
+     ) {  
+    $tag_data = [ array( "name" => "audioboost", "value" => $options['args']['audioboost'] )];
+    $status = setMediaFormatTag($file, $tag_data);
+    return($stats); 
+  }
+
+
 
   //  Show Running Progress
   if ($args['show_progress']) {
@@ -45,6 +71,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
   //
   // Convert original "accepted" format to $options['args']['extension'] ? Matroska (mkv) 
   // acceptible formats configured in $options['args']['extensions']
+  $mtime = filemtime($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename']);
   if ($file['extension'] !== $options['args']['extension']) {
     print ansiColor("red") . $file['filename'] . "." . $file['extension'] . "\n" . ansiColor();
     print ansiColor("blue") . "Container Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . $options['args']['extension'] ."\n" . ansiColor();
@@ -66,12 +93,11 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
       exec("$cmdln", $output, $status);
       if ($status == 255) {
         //status(255) => CTRL-C
-        stop($args, time());
+        stop($options, time());
         return($stats);
       }
-      if (file_exists($file['filename'] . "." . $options['args']['extension']) && !file_exists($args['stop'])) {
+      if (file_exists($file['filename'] . "." . $options['args']['extension']) && (file_exists($options['args']['stop']) && !filesize($options['args']['stop']))) {
         $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
-        $mtime = filemtime($file['basename']);
         unlink($file['basename']);
         $mkv_filename = $mkv_file['filename'] . "." . $options['args']['extension'];
         touch($mkv_filename, $mtime); //retain original timestamp
@@ -86,80 +112,75 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
     }
   }
 
-
-
   $curdir = getcwd();
   chdir($file['dirname']);  
 
 # Process Item
   $options['info']['title'] = "'" . str_replace("'", "\'", $file['filename']) . "'";
   $options['info']['timestamp'] = date("Ymd.His");
+  $file = remove_illegal_chars($file, $options);
   list($file, $info) = ffprobe($file, $options);
-  if ($info['format']['exclude']) {
+
+  if (empty($info) || file_exists($options['args']['stop'])) {
     return($stats);
   }
-  $file = remove_illegal_chars($file, $options);
-  if (empty($info) || file_exists($args['stop'])) {
+  if (!empty($info['format']['exclude']) && !$options['args']['override']) {
     return($stats);
   }
   $options = ffanalyze($info, $options, $args, $dir, $file);
-  if (empty($options) || file_exists($args['stop'])) {
+  if (empty($options) || file_exists($options['args']['stop'])) {
     return($stats);
   }
 
   // check the file's timestamp (Do not process if file time is too new. Still unpacking?)
-  if (filemtime($file['basename']) > time()) {
+  if ($mtime > time()) {
     touch($file['basename'], time()); //file time is in the future (created overseas?), set it to current time.
-  }
-  elseif ((filemtime($file['basename']) + $options['args']['delay']) > time() && filemtime($file['basename']) <= time() && !$options['args']['force']) {
-    print $file['basename'] . " modified < " . $options['args']['delay'] . " seconds ago.";
-    return($stats);
   }
 
 //Preprocess with mkvmerge (if in path)
-  if (`which mkvmerge` && !$options['args']['skip'] && !$info['format']['mkvmerged'] && !$options['args']['test'] ||
-      $options['args']['force'] && !$options['args']['test']) {
-    if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
-       if (( !$info['format']['mkvmerged'] || $options['args']['force'] ) && !file_exists($args['stop'])) {
-          $mkvmerge_temp_file = "." . $file['extension'] . "." . "merge";
+  if (`which mkvmerge 2> /dev/null` && !$options['args']['nomkvmerge']) {
+       if ( !$info['format']['mkvmerged']  && !file_exists($options['args']['stop']) && !$options['args']['test']) {
           $cmdln = "mkvmerge" .
           " --language 0:" . $options['args']['language'] .
           " --language 1:" . $options['args']['language'] .
           " --video-tracks " . $info['video']['index'] .
           " --audio-tracks " . $info['audio']['index'] .
           " --track-order " . "0:".$info['video']['index'].","."1:".$info['audio']['index'] .
-          " --subtitle-tracks '" . $options['args']['language'] . "'" .
-          " --no-attachments" .
-          " --track-tags '" . $options['args']['language'] . "'" .
-          " --output '" . $file['filename'] . $mkvmerge_temp_file ."' '" . $file['basename'] . "'";
-        if ($options['args']['verbose'] || file_exists($args['stop'])) {
+          " --no-attachments";
+          if ( $options['args']['filter_foreign'] && !empty($options['args']['language'])) {
+            $cmdln .= 
+            " --subtitle-tracks '" . $options['args']['language'] . "'" .
+            " --track-tags '" . $options['args']['language'] . "'";
+          }
+          $cmdln .= " --output '" . $file['filename'] . $mkvmerge_temp_ext ."' '" . $file['basename'] . "'";
+        if ($options['args']['verbose'] || file_exists($options['args']['stop'])) {
           print "\n\n". ansiColor("green") . "$cmdln\n" . ansiColor();
         }
         system("$cmdln 2>&1", $status);
         if ($status == 255) {
           //status(255) => CTRL-C    
-          stop($args, time());
+          stop($options, time());
           return($stats);
         }
 
-        if (file_exists($file['filename'] . $mkvmerge_temp_file ) && !file_exists($args['stop'])) {
-          $mtime = filemtime($file['basename']);
+        if (file_exists($file['filename'] . $mkvmerge_temp_ext ) && !file_exists($options['args']['stop'])) {
           unlink($file['basename']);
-          rename($file['filename'] . $mkvmerge_temp_file, $file['filename'] . "." . $options['args']['extension']);
+          rename($file['filename'] . $mkvmerge_temp_ext, $file['filename'] . "." . $options['args']['extension']);
           touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
-          list($file, $info) = ffprobe($file, $options);
-          setXmlFormatAttribute($file, "mkvmerged");
+          list($file, $info) = ffprobe($file, $options, true);
+          $tag_data = [ array("name" => "mkvmerged", "value" => "1") ];
+          $status = setMediaFormatTag($file, $tag_data);
           $options = ffanalyze($info, $options, $args, $dir, $file);
           if (empty($options)) {
             return($stats);
           }
         }
-        if(file_exists($args['stop'])) {
+        if(file_exists($options['args']['stop'])) {
           exit;
         }
       }
     }
-  }
+  
 
   if (!isset($options['args']['video'])) {
     $options['args']['video'] = "-vcodec copy";
@@ -211,7 +232,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
   if ($options['args']['test']) {
     $options['args']['meta'] = '';
   }
-  # CONVERT MEDIA
+  # ENCODE MEDIA
   $cmdln = "nice --adjustment=". $args['priority'] ." ffmpeg " . 
     "-hide_banner " . 
     "-v " . $options['args']['loglev'] . " " .
@@ -230,49 +251,47 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
   if ($options['args']['verbose']) {
     print "\n\n" . ansiColor("green") . "$cmdln\n\n" . ansiColor();
   }
-  if (!$options['args']['test'] && !file_exists($args['stop'])) {
+  if (!$options['args']['test'] && !file_exists($options['args']['stop'])) {
     print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor("yellow") . "\n";
-    print charTimes(39, " ") . "runtime=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
+    print charTimes(38, " ") . "run time=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
     exec("$cmdln", $output, $status);
     if($status === 255) {
       if ($status == 255) {
         //status(255) => CTRL-C 
-        stop($args, time());
+        stop($options, time());
         return($stats);
       }
     }
   }
 
  #Swap Validate
-  if ($options['args']['test'] || file_exists($args['stop'])) {
+  if ($options['args']['test'] || (file_exists($options['args']['stop']) && filesize($options['args']['stop']))) {
     return($stats);
   }
-  if ($options['args']['keepowner']) {
-    if (file_exists($file['basename'])) {
-      $options['owner'] = fileowner($file['basename']);
-    }
-  }
-  if (file_exists($file['basename'])) {
-    rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
-    $fileorig= pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . ".orig." . $file['extension']);    
-  }
-  if (file_exists("./.xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml")) {
-    unlink("./.xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml");
-  }
+  set_fileattrs($file, $options);
   if (file_exists($file['filename'] . ".hevc")) {
-    rename($file['filename'] . ".hevc", $file['filename'] . "." . $options['args']['extension']);
-  }
-  $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
-  if (file_exists($file['basename'])) {
-    set_fileattr($file, $options);
-    $inforig = $info;
-    list($file, $info) = ffprobe($file, $options);
+    if (file_exists($file['basename'])) {
+      rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
+      $fileorig= pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $file['filename'] . ".orig." . $file['extension']);    
+    }
+    if (file_exists("." . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml")) {
+      unlink("." . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml");
+    }  
+
+    rename($file['filename'] . ".hevc", $file['filename'] . "." . $options['args']['extension']);  
+
+    $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
+
+    if (file_exists($file['basename'])) {
+      set_fileattrs($file, $options);
+      $inforig = $info;
+      list($file, $info) = ffprobe($file, $options, true);
+    }
   }
   if (empty($info)) {
     return($stats);
   }
-  if (!$options['args']['keeporiginal'] && isset($fileorig)) {
-    $mtime = filemtime($fileorig['basename']);
+//  if (!$options['args']['keeporiginal'] && isset($fileorig)) {
     $reasons = array();
     if ($info['format']['probe_score'] < 100) {
       $reasons[] = "probe_score = " . $info['format']['probe_score'];
@@ -292,8 +311,8 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
       $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['basename']), 0, false) . ")";
     }
     if (empty($reasons) || ($options['args']['force'])) {
-      if (file_exists($file['filename'] . $options['args']['extension'])) {
-        list($file, $info) = ffprobe($file, $options);
+      if (file_exists($file['basename'] . $options['args']['extension'])) {
+        list($file, $info) = ffprobe($file, $options, true);
         $file = rename_byCodecs($file, $options, $info);
         $file = rename_PlexStandards($file, $options);
         touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
@@ -303,10 +322,11 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
           rename($file['filename'] . "." . $options['args']['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
         }
       }
+
       print ansiColor("blue") . "SIZE-STAT: " . $file['basename'] . " ( " . 
-        "[orig] " . ansiColor("red") . formatBytes(filesize($fileorig['basename']), 2, true) . ansiColor("blue") . " - " .
+        "[orig] " . ansiColor("red") . formatBytes($inforig['format']['size'], 2, true) . ansiColor("blue") . " - " .
         "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " . 
-        "[diff] " . ansiColor("green") . formatBytes(filesize($fileorig['basename']) - ($info['format']['size']), 2, true) . ansiColor("blue") . " " .
+        "[diff] " . ansiColor("green") . formatBytes(($inforig['format']['size'] - $info['format']['size']), 2, true) . ansiColor("blue") . " " .
         ")\n" . ansiColor();
       print charTimes(80, "#", "blue") . "\n\n";
       if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
@@ -316,12 +336,14 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
       if (file_exists($fileorig['basename']) && !$options['args']['keeporiginal']) {
         unlink($fileorig['basename']);
       } 
+    $file = rename_byCodecs($file, $options, $info);
+    $file = rename_PlexStandards($file, $options);
     }
     else {
-      print ansiColor("red") . "Rollback: " . $file['basename'] . ansiColor() . " : ";
-      print "  reason(s):";
+      print ansiColor("red") . "Rollback: " . $file['basename'] . ansiColor() . "\n";
+      print "  reason(s):\n";
       foreach ($reasons as $reason) {
-        print ansiColor("blue") . "$reason\n" . ansiColor();
+        print ansiColor("red") . "    $reason\n" . ansiColor();
       }
       //conversion failed : Let's cleanup and exclude
       if (file_exists($file['filename'] . ".hevc")) {
@@ -330,20 +352,41 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
       if (file_exists($file['basename']) && file_exists($fileorig['basename']) ) {
         unlink($file['basename']);
         rename($fileorig['basename'], $file['basename']);
-        $info = ffprobe($file, $options)[1];
+        $info = ffprobe($file, $options, true)[1];
         $file = rename_byCodecs($file, $options, $info);
         $file = rename_PlexStandards($file, $options);
         $options['args']['exclude'] = true;
         print charTimes(80, "#", "blue") . "\n\n";
       }
     }
-  }
 
-  if ($options['args']['exclude']) {
-    if (empty($info)) {
-      $info = ffprobe($file, $options)[1];
+  // Set ffHEVC Media Format Tags 
+  if ($options['args']['exclude'] && !empty($info) && !$options['args']['override']) {
+    if (file_exists($file['basename'])) {
+      $tag_data = [ array("name" => "exclude", "value" => "1") ];
+      $error_status = setMediaFormatTag($file, $tag_data);
+      if (!$error_status) {
+        ffprobe($file, $options, true);
+      }
     }
-      $options = setXmlExclude($file, $options, $info);
+    if ($options['args']['mkvmerged'] && !empty($info) && !$options['args']['override']) {
+      if (file_exists($file['basename'])) {
+        $tag_data = [ array("name" => "mkvmerged", "value" => "1") ];
+        $error_status = setMediaFormatTag($file, $tag_data);
+        if (!$error_status) {
+          ffprobe($file, $options, true);
+        }
+      }
+    }
+    if ($options['args']['audioboost'] && !empty($info) && !$options['args']['override']) {
+      if (file_exists($file['basename'])) {
+        $tag_data = [ array("name" => "exclude", "value" => $options['args']['audioboost']) ];
+        $error_status = setMediaFormatTag($file, $tag_data);
+        if (!$error_status) {
+          ffprobe($file, $options, true);
+        }
+      } 
+    }
   }
 
   if ($options['args']['cooldown'] > 0) {
@@ -354,3 +397,4 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
   chdir($curdir);
   return($stats);
 }
+

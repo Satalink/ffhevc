@@ -17,10 +17,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $options = array();
     return($options);
   }
-
   if ($info['format']['exclude'] && !$options['args']['override']) {
     if ($options['args']['verbose']) {
-      print ansiColor("magenta") . " " . $file['filename'] . ansiColor("red") . " Excluded! ". ansiColor() . "  Delete .xml folder or use --override option to override.\n";
+      print ansiColor("green") . " " . $file['basename'] . ansiColor("red") . " Excluded! ". ansiColor("yellow") . "  use --override option to override.\n" . ansiColor();
     }
     $options = array();
     return($options);
@@ -34,8 +33,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $meta_duration = " -metadata duration=" . $duration;
   }
   $options['args']['meta'] .= " -metadata title=" . $options['info']['title'] .
-    $meta_duration .
-    " -metadata creation_date=" . $options['info']['timestamp'] .
+    $meta_duration . " -metadata creation_date=" . $options['info']['timestamp'] .
     " -metadata encoder= ";
 
 //Video
@@ -138,12 +136,13 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     $info['audio'] = null;
   }
   
-  if (!empty($info['audio'])) {
+  if (isset($info) && !empty($info['audio']) && isset($options) && !empty($options['audio'])) {
     $title = isset($info['audio']['title']) ? $info['audio']['title'] : "Default Track";
     if (!preg_match("/comment/i", $title)) {
       if (
+        isset($info['audio']['codec']) && isset($options['audio']['codecs']) &&
         in_array($info['audio']['codec'], $options['audio']['codecs']) &&
-        (int) ((filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) * $options['audio']['quality_factor']) &&
+        (int) ((filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000)) &&
         $info['audio']['channels'] <= $options['audio']['channels'] &&
         !$options['args']['override']
       ) {
@@ -170,18 +169,23 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         else {
           $info['audio']['bps'] = "";
         }
-        $options['args']['meta'] .= " -metadata:s:a:0 language=" . $options['args']['language'] . " " .
+        $options['args']['meta'] .= 
+          " -metadata:s:a:0 language=" . $options['args']['language'] . 
           " -metadata:s:a:0 codec_name=" . $info['audio']['codec'] .
           " -metadata:s:a:0 channels=" . $info['audio']['channels'] .
           " -metadata:s:a:0 bit_rate=" . $info['audio']['bitrate'] .
           " -metadata:s:a:0 sample_rate=" . $info['audio']['sample_rate'] .
           " -metadata:s:a:0 bps=" . $info['audio']['bps'] .
           " -metadata:s:a:0 title= ";
+        if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
+          $options['args']['meta'] .= " -metadata:s:a:0 audioboost=" . $options['args']['audioboost'];
+        }
         if (!preg_match("/copy/i", $options['args']['video'])) {
           print ansiColor("yellow") . "Audio Inspection ->" . ansiColor() . "copy\n";
         }
       }
       else {
+        print ansiColor("green") . $file['basename'] . "\n" . ansiColor();
         print ansiColor("blue") . "Audio Inspection ->" . ansiColor() .
           $info['audio']['codec'] . ":" . $options['audio']['codec'] . "," .
           $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "," .
@@ -217,11 +221,16 @@ function ffanalyze($info, $options, $args, $dir, $file) {
           isset($options['audio']['bitrate']) &&
           isset($options['audio']['sample_rate'])
         ) {
-          $options['args']['audio'] = "-acodec " . $options['audio']['codec'] .
+          $options['args']['audio'] = 
+            "-acodec " . $options['audio']['codec'] .
             " -ac " . $options['audio']['channels'] .
             " -ab " . $options['audio']['bitrate'] .
             " -ar " . $options['audio']['sample_rate'] .
             " -async 1";
+            if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
+            $options['args']['audio'] .= " -af volume=" . $options['args']['audioboost'];
+            }
+    
         }
         else {
           $options['args']['audio'] = "-acodec copy";
@@ -250,6 +259,11 @@ function ffanalyze($info, $options, $args, $dir, $file) {
 
   //Clear Old Tags
   //lowercase metadata names
+ $keep_ftags = array(
+    "exclude",
+    "mkvmerged",
+    "audioboost"
+  );
   $keep_vtags = array(
     "bps",
     "bit_rate",
@@ -276,8 +290,14 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     "_statistics_writing_app",
     "_statistics_writing_date_utc",
     "number_of_frames",
-    "number_of_bytes"
-  );
+    "number_of_bytes",
+    );
+
+  if (!empty($info['ftags'])) {
+    foreach ($info['ftags'] as $ftag => $fval) {
+      
+    }
+  }
 
   if (!empty($info['vtags'])) {
     foreach ($info['vtags'] as $vtag => $vval) {

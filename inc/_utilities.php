@@ -13,14 +13,15 @@ function seconds_toTime($seconds) {
 }
 
 function checkProcessCount($args, $options, $stats) {
-  exec("ps -efW|grep -v grep|grep ffmpeg|wc -l", $ffcount);
-  exec("ps -efW|grep -v grep|grep mkvmerge|wc -l", $mergecount);
-
-  if ($ffcount[0] >= $args['max_processes'] && !$options['args']['force'] && !$options['args']['test']) {
-    exit(ansiColor("red") ."ERR: $ffcount[0] FFMPEG processes are running, max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
-  }
-  elseif ($mergecount[0] >= $args['max_processes'] && !$options['args']['force'] && !$options['args']['test']) {
-    exit(ansiColor("red") . "ERR: $mergecount[0] MKVMERGE processes are running, , max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
+  if ( !$options['args']['force'] && !$options['args']['test'] ) {
+    exec("ps -efW|grep -v grep|grep ffmpeg|wc -l", $ffcount);
+    exec("ps -efW|grep -v grep|grep mkvmerge|wc -l", $mergecount);
+    if ($ffcount[0] >= $args['max_processes']) {
+      exit(ansiColor("red") ."ERR: $ffcount[0] FFMPEG processes are running, max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
+    }
+    elseif ($mergecount[0] >= $args['max_processes']) {
+      exit(ansiColor("red") . "ERR: $mergecount[0] MKVMERGE processes are running, , max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
+    }
   }
 }
 
@@ -41,32 +42,26 @@ function formatBytes($bytes, $precision, $kbyte) {
   return round($bytes, $precision) . ' ' . $units[$pow];
 }
 
-function stop($args, $time=null) {
+function stop($options, $time=null) {
   // the `register_shutdown_function` won't pass time for normal shutdown of end of script
-  if (!file_exists($args['stop']) || !filesize($args['stop'])) {
-    touch($args['stop']);
+  if (!file_exists($options['args']['stop']) || 
+      !filesize($options['args']['stop'])) {
+         touch($options['args']['stop']);
   }
   if (isset($time)) {
-    file_put_contents($args['stop'], $time, FILE_APPEND);
+    file_put_contents($options['args']['stop'], $time, FILE_APPEND);
   }
   return;
 }
 
+function moduleCheck($module) {
+  $loaded_php_modules = get_loaded_extensions();
+  return (in_array($module, $loaded_php_modules));
+}
 
 function is_between(int $min, int $max, int $val){
     if ($val >= $min && $val <= $max) {
     return true;
   }
   return false;
-}
-
-function step() {
-  echo "continue? [Y/n]: ";
-  $handle = fopen ("php://stdin","r");
-  $line = fgets($handle);
-  if(trim(preg_match('/[y]/i', $line))) {
-      echo "ABORTING!\n";
-      exit;
-  }
-  fclose($handle);
 }

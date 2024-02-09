@@ -8,7 +8,7 @@
 function processRecursive($dir, $options, $args, $stats) {
   // Get Total Files to Process (once)
   if (!isset($stats['total_files'])) {
-    $cmdln = "find '" . $dir . "' -not -path './*_UNPACK_*'"; $i=0;
+    $cmdln = "find '" . $dir . "' -not -path '*_UNPACK_*'"; $i=0;
     foreach ($options['args']['extensions'] as $ext) {
       if ($i) $cmdln .= " -or";
       $cmdln .= " -name '*." . $ext . "'"; $i++;
@@ -20,7 +20,7 @@ function processRecursive($dir, $options, $args, $stats) {
 
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
-    if (file_exists($args['stop'])) {
+    if (file_exists($options['args']['stop'])) {
       return($stats);
     }
 
