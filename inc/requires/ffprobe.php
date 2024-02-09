@@ -60,8 +60,7 @@ function ffprobe($file, $options, $quiet=false) {
   $ftags = array();
   foreach ($format_tags->tag as $tag) {
     $tag_key = strtolower(getXmlAttribute($tag, "key"));
-    $tag_val = strtolower(getXmlAttribute($tag, "value"));
-    $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
+    $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
     if (preg_match('/^exclude$/', $tag_key)) {
       $info['ftags'] = $info['format']['exclude'] = $tag_val;
       continue;
@@ -107,8 +106,7 @@ function ffprobe($file, $options, $quiet=false) {
             }
             foreach ($stream->tags->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
-              $tag_val = strtolower(getXmlAttribute($tag, "value"));
-              $tag_val = str_replace('(', '', str_replace('\'', '', $tag_val));
+              $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
               //print "\n" . $tag_key . " : " . $tag_val . "\n";
               if (preg_match('/^bps$/i', $tag_key) && !isset($info['video']['bitrate'])) {
                 $info['video']['bitrate'] = (int) $tag_val;
@@ -144,7 +142,7 @@ function ffprobe($file, $options, $quiet=false) {
             }
             foreach ($stream->tags->tag as $tag) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
-              $tag_val = preg_replace('/\(|\)/', '',  strtolower(getXmlAttribute($tag, "value")));
+              $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
               if ($tag_key == "language") {
                 if ($tag_val !== $options['args']['language']) {  
                   $info['filters']['audio']['language'][] = $tag_val;
