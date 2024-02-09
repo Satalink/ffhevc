@@ -131,54 +131,51 @@ function rename_PlexStandards($file, $options) {
 }
 
 function rename_byCodecs($file, $options, $info) {
+  $filename    = $file['filename'];
+  $resolutions = array('480p', '720p', '1080p', '2160p', ' SD', ' HD', ' UHD');
+  $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265", "vc1", "hevc");
+  $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
+  $profiles    = array('RAW-HD', 'Remux', 'BLURAY', 'WEBDL', 'WEBRIP', 'HDTV');  // Radarr Quality Profiles
 
-  if ($options['args']['rename']) {
-    $filename    = $file['filename'];
-    $resolutions = array('480p', '720p', '1080p', '2160p', ' SD', ' HD', ' UHD');
-    $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265", "vc1", "hevc");
-    $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
-    $profiles    = array('Raw-HD', 'BR-Disk', 'Remux', 'Bluray', 'WebDL', 'WebRip', 'HDTV');  // Radarr Quality Profiles
+  $resolution  = get_resolution($info['video']['height']);
+  $vcodec      = isset($info['video']['codec_name']) ? $info['video']['codec_name'] : $options['video']['codec_long_name'];
+  $vcodec      = preg_match('/hevc/', $vcodec) ? "x265" : $vcodec;
+  $acodec      = isset($info['audio']['codec_name']) ? strtoupper($info['audio']['codec_name']) : strtoupper($options['audio']['codec']);
+  $profile     = strtoupper($options['video']['profile']);
 
-    $resolution  = get_resolution($info['video']['height']);
-    $vcodec      = isset($info['video']['codec_name']) ? $info['video']['codec_name'] : $options['video']['codec_long_name'];
-    $vcodec      = preg_match('/(hevc)/', $vcodec) ? "x265" : $vcodec;
-    $acodec      = isset($info['audio']['codec_name']) ? $info['audio']['codec_name'] : $options['audio']['codec'];
-    $profile     = $options['video']['profile'];
-
-    $filename_set = false;
-    if (preg_match("/\([1-2]\d{3}\)$/", $filename)) {
-        $filename = $file['filename'] . " - [ $resolution $vcodec $acodec ]";
-        $filename_set = true;
-    }
-    if (!$filename_set) {
-      foreach ($profiles as $pf) {
-        if (preg_match("/$pf/i", $filename)) {
-          $filename = str_ireplace($pf, "$profile", "$filename");
-          break;
-        }
-      }
-      foreach ($resolutions as $res) {
-        if (preg_match("/$res/i", $filename)) {
-          $filename = str_ireplace($res, "$resolution", $filename);
-          break;
-        }
-      } 
-      foreach ($vcodecs as $vc) {
-        if (preg_match("/$vc/i", $filename)) {
-          $filename = str_ireplace($vc, "$vcodec", "$filename");
-          break;
-        }    
-      }
-      foreach ($acodecs as $ac) {
-        if (preg_match("/$ac/i", $filename)) {
-          $filename = str_ireplace($ac, "$acodec", "$filename");
-          break;
-        }        
-      }
-    }
-    rename($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $file['dirname'] . DIRECTORY_SEPARATOR . $filename . "." . $file['extension']);
-    $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $filename . "." . $file['extension']);
+  $filename_set = false;
+  if (preg_match("/\([1-2]\d{3}\)$/", $filename) && $options['args']['rename']) {
+      $filename = $file['filename'] . " - [ $resolution $vcodec $acodec ]";
+      $filename_set = true;
   }
+  if (!$filename_set) {
+    foreach ($profiles as $pf) {
+      if (preg_match("/$pf/i", $filename)) {
+        $filename = str_ireplace($pf, "$profile", "$filename");
+        break;
+      }
+    }
+    foreach ($resolutions as $res) {
+      if (preg_match("/$res/i", $filename)) {
+        $filename = str_ireplace($res, "$resolution", $filename);
+        break;
+      }
+    } 
+    foreach ($vcodecs as $vc) {
+      if (preg_match("/$vc/i", $filename)) {
+        $filename = str_ireplace($vc, "$vcodec", "$filename");
+        break;
+      }    
+    }
+    foreach ($acodecs as $ac) {
+      if (preg_match("/$ac/i", $filename)) {
+        $filename = str_ireplace($ac, "$acodec", "$filename");
+        break;
+      }        
+    }
+  }
+  rename($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $file['dirname'] . DIRECTORY_SEPARATOR . $filename . "." . $file['extension']);
+  $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $filename . "." . $file['extension']);
   return($file);
 }
 

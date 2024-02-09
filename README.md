@@ -82,7 +82,7 @@ ffhevc uses the Plex Naming Standard if the `rename` flag is set to true.
   
 #### Recommended Settings ()
   Radarr -> Settings -> Media Management: Standard Movie Format<br>
-  `{Movie CleanTitle} ({Release Year}) - [ {ImdbId} {Quality Title} {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
+  `{Movie CleanTitle} ({Release Year}) - [ {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
 
   Sonarr -> Settings -> Media Management: Standard Episode Format<br>
   `{Series CleanTitle} - s{season:00}e{episode:00} ({Series Year}) - [ {ImdbId} {Quality Title} {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
@@ -90,4 +90,3 @@ ffhevc uses the Plex Naming Standard if the `rename` flag is set to true.
   -  ref [Plex Movie Naming Standard](https://support.plex.tv/articles/naming-and-organizing-your-movie-media-files/)<br>
   -  ref [Plex TV Show Naming Standard](https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/)<br>
 
-  Plex uses the information in brackets to title matching. Plex will attempt to match the title without imdbid but sometimes gets it wrong. Providing the imdbid in the filename almost ensures a match.

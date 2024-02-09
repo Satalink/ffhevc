@@ -37,7 +37,7 @@
       $i++;
     }
     //Single File Processing
-    if (!empty($file)) {
+    if (isset($file)) {
       $options = getLocationOptions($options, $args, $file['dirname']);
       $stats = processItem($file['dirname'], $file['basename'], $options, $args, $stats);
       showStats($stats);
@@ -100,7 +100,6 @@ function getCommandLineOptions($options, $args) {
     --exclude       :flag:        exclude from being processed (ignore this video), stored in .xml
     --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
     --keeporiginal  :flag:        keep the original file and save as filename.orig.ext
-    --keepowner     :flag:        keep the original file owner for the newly created file
     --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language\n\n" .
   
     ansiColor("green") . "PARMS (Default * denoted) i.e.  --language=eng" .
@@ -110,6 +109,7 @@ function getCommandLineOptions($options, $args) {
     --acodec        :pass value:  set audio codec manually.  (*aac, ac3, libopus, mp3, etc... | none)
     --achannels     :pass value:  set audio channels manually.  (1, 2, *6, 8) 1=mono, 2=stereo, *6=5.1, 8=7.1
     --asamplerate   :pass value:  set audio sample rate manually. (8000, 12000, 16000, 24000, 32000, 44000, *48000)
+    --audioboost    :pass value:  set the dB boost level (1dB, 5dB, 10dB, 15dB.. etc) // must end with 'dB'
     --pix_fmt       :pass value:  set video codec pix_fmt (*yuv420p, yuv420p10, yuv420p10le, yuv422p, yuv444p)
     --vmin          :pass value:  set variable quality min (*1-33)
     --vmax          :pass value:  set variable quality max (1-*33)
@@ -139,7 +139,7 @@ function getCommandLineOptions($options, $args) {
       $options['args']['force'] = true;
     }
     if (array_key_exists("nomkvmerge", $cmd_ln_opts)) {
-      $options['args']['skip'] = true;
+      $options['args']['nomkvmerge'] = true;
     }
     if (array_key_exists("override", $cmd_ln_opts)) {
       $options['args']['override'] = true;
@@ -171,6 +171,9 @@ function getCommandLineOptions($options, $args) {
     if (array_key_exists("asamplerate", $cmd_ln_opts)) {
       $options['audio']['sample_rate'] = $cmd_ln_opts['asamplerate'];
     }
+    if (array_key_exists("audioboost", $cmd_ln_opts)) {
+      $options['args']['audioboost'] = preg_match('/^\d{1,2}dB$/', $cmd_ln_opts['audioboost']) ? $cmd_ln_opts['audioboost'] : "";
+    } 
     if (array_key_exists("quality", $cmd_ln_opts)) {
       $options['video']['quality_factor'] = $cmd_ln_opts['quality'];
     }
@@ -207,9 +210,6 @@ function getDefaultOptions($args, $location_config) {
    *    NOTE: conf/media_paths_keys OVERRIDE THESE VALUES
    */
 
-  $options['owner'] = "";
-  $options['group'] = "Administrators";
-
   $options['video']['quality_factor'] = 1.29;  //Range 1.00 to 3.00 (QualityBased: vmin-vmax overrides VBR Quality. Bitrate will not drop below VBR regardless of vmin-vmax settings)
   $options['video']['filesize_tollerance'] = 1.05;  // If the re-encoded file is greater than original by x%, keep re-encoded file (should be greater than or equal to 1.00)
   $options['video']['vmin'] = "1";
@@ -233,25 +233,26 @@ function getDefaultOptions($args, $location_config) {
   $options['audio']['codec'] = "eac3";  // "aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none"
   $options['audio']['channels'] = 6;
   $options['audio']['bitrate'] = "720k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
-  $options['audio']['quality_factor'] = 1.01; // give bit-rate some tollerance (384114 would pass okay for 384000)
   $options['audio']['sample_rate'] = 48000;
   $options['audio']['max_streams'] = 1;  //Maximum number of audio streams to keep
 
+  $options['args']['audioboost'] = !empty($args['audio_boost']) ? $args['audio_boost'] : "";
   $options['args']['extension'] = !empty($args['extension']) ? $args['extension'] : "mkv";
   $options['args']['extensions'] = array("mkv", "mp4", "mpeg", "ts", "m2ts", "avi");  // acceptable formats to convert/encode
+  $options['args']['owner'] = !empty($args['owner']) ? $args['owner'] : false;
+  $options['args']['group'] = !empty($args['group']) ? $args['group'] : false;
   $options['args']['rename'] = !empty($args['rename']) ?: 0;
   $options['args']['remove_illegal_chars'] = !empty($args['remove_illegal_chars']) ?: 0;
-  $options['args']['verbose'] = false;
   $options['args']['test'] = false;
+  $options['args']['verbose'] = !empty($options['args']['test']) ? $options['args']['test'] : false;  // if test, assume verbose
   $options['args']['stats_period'] = "1";  // ffmpeg stats reporting frequency in seconds
   $options['args']['keys'] = false;
   $options['args']['force'] = false;
-  $options['args']['skip'] = false;
+  $options['args']['nomkvmerge'] = false;
   $options['args']['override'] = false;
   $options['args']['followlinks'] = false;
   $options['args']['exclude'] = false;  // if true, the xml file will be flagged exclude for the processed the media.
   $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig.ext)
-  $options['args']['keepowner'] = true;  // if true, the original file owner will be used in the new file.
   $options['args']['deletecorrupt'] = false; // if true, corrupt files will be automatically deleted. (can be annoying if you're not fully automated)
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['filter_foreign'] = !empty($args['filter_foreign']) ? $args['filter_foreign'] : null;
@@ -261,6 +262,7 @@ function getDefaultOptions($args, $location_config) {
   $options['args']['loglev'] = "quiet";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['threads'] = 0;
   $options['args']['maxmuxqueuesize'] = 8192;
+  $options['args']['stop'] = isset($args['stop']) ? $args['stop'] : "/tmp/hevc.stop";
   $options['args']['pix_fmts'] = array(//acceptable pix_fmts
     "yuv420p",
     "yuv420p10le",
@@ -271,7 +273,6 @@ function getDefaultOptions($args, $location_config) {
     "followlinks",
     "force",
     "help",
-    "keepowner",
     "keeporiginal",
     "keys",
     "nomkvmerge",

@@ -26,19 +26,21 @@ $args = array(
 
   "extension" => "mkv",         // The desired media container format of your media files.
   
-  "rename" => false,             // Rename files to standard filenaming specification
+  "rename" => false,            // Rename files to standard filenaming specification
                                 // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]
                                 //
-                                //  from:  movie.title.1999.tt1234567890.Bluray.h264.ac3.mkv
-                                //    to:  Movie Title (1999) [ tt123456780 WebDL x265 EAC3 ].mkv
-                                //
-                                // Plex uses the information in brackets for matching and media specs (if provided).
+                                //  from:  movie.title.1999.Bluray.h264.DTS-HD.mkv
+                                //    to:  Movie Title (1999) [ WebDL x265 EAC3 ].mkv
 
+  "owner" => "",                // change owner (chown) on file (note: if you use a portable USB drive on seperate Operating Systems, don't set this)
+  "group" => "Administrators",  // change group (chgrp) on file (note: okay to set even for portable USB drives)
 
-  "filter_foreign" => true,     // filters out all other language tracks that do not match default language track (defined below "language") 
+  "audio_boost" => "",          // Amplify audio track(s) ( 5dB, 10dB, 15dB, 20dB, 25dB)
+
+  "filter_foreign" => false,    // filters out all other language tracks that do not match default language track (defined below "language") 
                                 // ** requires mkvmerge in $PATH
-  "language" => "eng",          // Keep this language track
 
+  "language" => "",             // Keep language track(s) "eng",  "eng,esp"
 
   "remove_illegal_chars"  => true,
                                 // Remove single quotes from filenames. (Not part of the renaming function.)
