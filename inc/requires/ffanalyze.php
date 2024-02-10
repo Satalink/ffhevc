@@ -229,7 +229,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
             " -async 1";
             if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
               $options['args']['audio'] .= " -af volume=" . $options['args']['audioboost'];
-              print ansiColor("blue") . "Applying Audio Boost " . $options['args']['audioboost'] . "\n" . ansiColor();
+              print ansiColor("yellow") . "Audio Boost " . $options['args']['audioboost'] . " will be applied during encoding.\n" . ansiColor();
             }
     
         }
