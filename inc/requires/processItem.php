@@ -6,7 +6,7 @@
  * 
  */
 
-function processItem($dir, $item, $options, $args, $stats, $info=[]) {
+function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]) {
  
   $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");
   $mkvmerge_temp_ext = "." . $file['extension'] . "." . "merge";
@@ -23,8 +23,6 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
     return($stats);
   }
 
-  $stats['processed']++;
-
   // Set Exclude tag in media file
   if ($options['args']['exclude'] &&
       isset($info) && !$info['format']['exclude'] &&
@@ -34,25 +32,6 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
     $status = setMediaFormatTag($file, $tag_data);
     return($stats); 
   }
-  // Set MKVmerged tag in media file
-  if ( !isset($options['args']['nomkvmerge']) && isset($info['format']['mkvmerged']) && !$info['format']['mkvmerged'] &&
-      !$options['args']['override']
-     ) {  
-    $tag_data = [ array( "name" => "mkvmerged", "value" => "1" )];
-    $status = setMediaFormatTag($file, $tag_data);
-    return($stats); 
-  }
-  // Set AudioBoost tag in media file
-  if ($options['args']['audioboost'] &&
-      isset($info['audio']['audioboost']) && !$info['audio']['audioboost'] &&
-      !$options['args']['override']
-     ) {  
-    $tag_data = [ array( "name" => "audioboost", "value" => $options['args']['audioboost'] )];
-    $status = setMediaFormatTag($file, $tag_data);
-    return($stats); 
-  }
-
-
 
   //  Show Running Progress
   if ($args['show_progress']) {
@@ -66,25 +45,25 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
     }
   }  
 
+  $curdir = getcwd();
+  chdir($file['dirname']);  
+  $stats['processed']++;
 
   // Process Non-Excluded Files
-  //
-  // Convert original "accepted" format to $options['args']['extension'] ? Matroska (mkv) 
-  // acceptible formats configured in $options['args']['extensions']
   $mtime = filemtime($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename']);
+  $convorig = [];
+  // Convert Media
   if ($file['extension'] !== $options['args']['extension']) {
     print ansiColor("red") . $file['filename'] . "." . $file['extension'] . "\n" . ansiColor();
-    print ansiColor("blue") . "Container Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . $options['args']['extension'] ."\n" . ansiColor();
-    // [quiet, panic, fatal, error, warning, info, verbose, debug]
-    $subs = $file['extension'] === "mp4" ? "-sn " : ""; //Remove subs from mp4 files to prevent encoding issues
+    print ansiColor("blue") . "Format Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . $options['args']['extension'] ."\n" . ansiColor();
     $cmdln = "ffmpeg " . 
              "-hide_banner " .
              "-v " . $options['args']['loglev'] . " " .
              "-i '". $file['filename'] . "." . $file['extension'] . "' " .
              "-c copy " .
-             "$subs" .
+             "-sn " .
              "-stats " .
-             "-stats_period" . $options['args']['stats_period'] .
+             "-stats_period " . $options['args']['stats_period'] . " " .
              "-y '" . $file['filename'] . "." . $options['args']['extension'] . "'";
     if ($options['args']['verbose']) {
       print ansiColor("green") . "$cmdln\n" . ansiColor();
@@ -96,24 +75,15 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
         stop($options, time());
         return($stats);
       }
-      if (file_exists($file['filename'] . "." . $options['args']['extension']) && (file_exists($options['args']['stop']) && !filesize($options['args']['stop']))) {
-        $mkv_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
-        unlink($file['basename']);
-        $mkv_filename = $mkv_file['filename'] . "." . $options['args']['extension'];
-        touch($mkv_filename, $mtime); //retain original timestamp
-        list($file, $info) = ffprobe($mkv_file, $options);
-        $options = ffanalyze($info, $options, $args, $dir, $mkv_file);
-        if (empty($options)) {
-          return($stats);
-        }
-        $stats = processItem($dir, $mkv_filename, $options, $args, $stats, $info);
-        return($stats);
-      } 
-    }
+      if (file_exists($file['filename'] . "." . $options['args']['extension'])) { 
+        $converted_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
+        $convorig = $file;
+        rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
+        $file = pathinfo($converted_file['filename'] . "." . $options['args']['extension']);
+        touch($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $mtime); //retain original timestamp
+      }
+    } 
   }
-
-  $curdir = getcwd();
-  chdir($file['dirname']);  
 
 # Process Item
   $options['info']['title'] = "'" . str_replace("'", "\'", $file['filename']) . "'";
@@ -256,12 +226,10 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
     print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor("yellow") . "\n";
     print charTimes(38, " ") . "run time=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
     exec("$cmdln", $output, $status);
-    if($status === 255) {
-      if ($status == 255) {
-        //status(255) => CTRL-C 
-        stop($options, time());
-        return($stats);
-      }
+    if($status == 255) {
+      //status(255) => CTRL-C 
+      stop($options, time());
+      return($stats);
     }
   }
 
@@ -280,11 +248,8 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
     if (file_exists("." . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml")) {
       unlink("." . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $fileorig['filename'] . ".xml");
     }  
-
     rename($file['filename'] . ".hevc", $file['filename'] . "." . $options['args']['extension']);  
-
     $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
-
     if (file_exists($file['basename'])) {
       set_fileattrs($file, $options);
       $inforig = $info;
@@ -294,74 +259,76 @@ function processItem($dir, $item, $options, $args, $stats, $info=[]) {
   if (empty($info)) {
     return($stats);
   }
-//  if (!$options['args']['keeporiginal'] && isset($fileorig)) {
-    $reasons = array();
-    if ($info['format']['probe_score'] < 100) {
-      $reasons[] = "probe_score = " . $info['format']['probe_score'];
-    }
-    if (isset($inforig['video']) && !isset($info['video'])) {
-      $reasons[] = "video stream is missing";
-    }
-    if (isset($inforig['audio']) && !isset($info['audio'])) {
-      $reasons[] = "audio stream is missing";
-    }
-    if (
-      isset($inforig['format']['size']) &&
-      isset($options['video']['filesize_tollerance']) &&
-      isset($info['format']['size']) &&
-      (int) ($inforig['format']['size'] * $options['video']['filesize_tollerance']) < ((int) $info['format']['size'])
-      ){
-      $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['basename']), 0, false) . ")";
-    }
-    if (empty($reasons) || ($options['args']['override'])) {
-      if (file_exists($file['basename'] . $options['args']['extension'])) {
-        list($file, $info) = ffprobe($file, $options, true);
-        $file = rename_byCodecs($file, $options, $info);
-        $file = rename_PlexStandards($file, $options);
-        touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
-        if (isset($options['args']['destination']) && file_exists($options['args']['destination'] . DIRECTORY_SEPARATOR)) {
-          //move file to destination path defined in (external_ini_file)
-          print ansiColor("green") . "MOVING: " . $file['filename'] . "." . $options['args']['extension'] . " to " . $options['args']['destination'] . "\n" . ansiColor();
-          rename($file['filename'] . "." . $options['args']['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
-        }
-      }
-
-      print ansiColor("blue") . "SIZE-STAT: " . $file['basename'] . " ( " . 
-        "[orig] " . ansiColor("red") . formatBytes($inforig['format']['size'], 2, true) . ansiColor("blue") . " - " .
-        "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " . 
-        "[diff] " . ansiColor("green") . formatBytes(($inforig['format']['size'] - $info['format']['size']), 2, true) . ansiColor("blue") . " " .
-        ")\n" . ansiColor();
-      print charTimes(80, "#", "blue") . "\n\n";
-      if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
-        $stats['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
-        $stats['reEncoded']++;
-      }
-      if (file_exists($fileorig['basename']) && !$options['args']['keeporiginal']) {
-        unlink($fileorig['basename']);
-      } 
+  $reasons = array();
+  if ($info['format']['probe_score'] < 100) {
+    $reasons[] = "probe_score = " . $info['format']['probe_score'];
+  }
+  if (isset($inforig['video']) && !isset($info['video'])) {
+    $reasons[] = "video stream is missing";
+  }
+  if (isset($inforig['audio']) && !isset($info['audio'])) {
+    $reasons[] = "audio stream is missing";
+  }
+  if (
+    isset($inforig['format']['size']) &&
+    isset($options['video']['filesize_tollerance']) &&
+    isset($info['format']['size']) &&
+    (int) ($inforig['format']['size'] * $options['video']['filesize_tollerance']) < ((int) $info['format']['size'])
+    ){
+    $reasons[] = "original filesize is smaller by (" . formatBytes($info['format']['size'] - filesize($fileorig['basename']), 0, false) . ")";
+  }
+  if (empty($reasons) || ($options['args']['override'])) {
+    if (file_exists($file['basename'] . $options['args']['extension'])) {
+      list($file, $info) = ffprobe($file, $options, true);
       $file = rename_byCodecs($file, $options, $info);
       $file = rename_PlexStandards($file, $options);
-    }
-    else {
-      print ansiColor("red") . "Rollback: " . $file['basename'] . ansiColor() . "\n";
-      print "  reason(s):\n";
-      foreach ($reasons as $reason) {
-        print ansiColor("red") . "    $reason\n" . ansiColor();
-      }
-      //conversion failed : Let's cleanup and exclude
-      if (file_exists($file['filename'] . ".hevc")) {
-        unlink($file['filename'] . ".hevc");
-      }
-      if (file_exists($file['basename']) && file_exists($fileorig['basename']) ) {
-        unlink($file['basename']);
-        rename($fileorig['basename'], $file['basename']);
-        $info = ffprobe($file, $options, true)[1];
-        $file = rename_byCodecs($file, $options, $info);
-        $file = rename_PlexStandards($file, $options);
-        $options['args']['exclude'] = true;
-        print charTimes(80, "#", "blue") . "\n\n";
+      touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
+      if (isset($options['args']['destination']) && file_exists($options['args']['destination'] . DIRECTORY_SEPARATOR)) {
+        //move file to destination path defined in (external_ini_file)
+        print ansiColor("green") . "MOVING: " . $file['filename'] . "." . $options['args']['extension'] . " to " . $options['args']['destination'] . "\n" . ansiColor();
+        rename($file['filename'] . "." . $options['args']['extension'], $options['args']['destination'] . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
       }
     }
+
+    print ansiColor("blue") . "SIZE-STAT: " . $file['basename'] . " ( " . 
+      "[orig] " . ansiColor("red") . formatBytes($inforig['format']['size'], 2, true) . ansiColor("blue") . " - " .
+      "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " . 
+      "[diff] " . ansiColor("green") . formatBytes(($inforig['format']['size'] - $info['format']['size']), 2, true) . ansiColor("blue") . " " .
+      ")\n" . ansiColor();
+    print charTimes(80, "#", "blue") . "\n\n";
+    if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
+      $stats['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
+      $stats['reEncoded']++;
+    }
+    if (file_exists($fileorig['basename']) && !$options['args']['keeporiginal']) {
+      unlink($fileorig['basename']);
+    }
+    if (!empty($convorig) && file_exists($convorig['basename'])) {
+      unlink($convorig['basename']);
+    }
+    $file = rename_byCodecs($file, $options, $info);
+    $file = rename_PlexStandards($file, $options);
+  }
+  else {
+    print ansiColor("red") . "Rollback: " . $file['basename'] . ansiColor() . "\n";
+    print "  reason(s):\n";
+    foreach ($reasons as $reason) {
+      print ansiColor("red") . "    $reason\n" . ansiColor();
+    }
+    //conversion failed : Let's cleanup and exclude
+    if (file_exists($file['filename'] . ".hevc")) {
+      unlink($file['filename'] . ".hevc");
+    }
+    if (file_exists($file['basename']) && file_exists($fileorig['basename']) ) {
+      unlink($file['basename']);
+      rename($fileorig['basename'], $file['basename']);
+      $info = ffprobe($file, $options, true)[1];
+      $file = rename_byCodecs($file, $options, $info);
+      $file = rename_PlexStandards($file, $options);
+      $options['args']['exclude'] = true;
+      print charTimes(80, "#", "blue") . "\n\n";
+    }
+  }
 
   // Set ffHEVC Media Format Tags 
   if ($options['args']['exclude'] && !empty($info) && !$options['args']['override']) {

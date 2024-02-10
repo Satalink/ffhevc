@@ -1,55 +1,85 @@
 <?php
 /**
  * Default configuration
- * 
- * view inc_requires/options.php for more detailed option settings
+ *
+ *   RENAME THIS FILE to `settings.php`
+ *
  */
+
 $args = array(
-  // conf file that contains your media directroy ffenc encoding settings
-  "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php",  
 
-  // Configuration Settings
+  // ffHEVC Configuration
+
+  /**
+   * Process Settings
+   */
   "max_processes" => 1,         // maximum number of instances this application can run
-
-  "priority" => "11",          // ffmpeg encoding process processor priority: -20 to 19 (19 is has lowest priorty, 10 is default sytem process priority)
-                               // -20 is critical priority ( My mouse doesn't move.. oh there it goes.. oh no it's not moving again.)
-
+  "display_banner" => true,     // Display the ffHEVC banner on run
+  "priority" => "11",           // ffmpeg encoding process processor priority: -20 to 19 (19 is has lowest priorty, 10 is default sytem process priority)
+                                // -20 is critical priority ( My mouse doesn't move.. oh there it goes.. oh no it's not moving again.)
+  "cooldown" => 0,              // Seconds to pause between each encoding -- adjust if your system is over heating under extreme processing
   "stop" => "/tmp/hevc.stop",   // If this file exists the process will exist after finishing with the current file. Required to have it
                                 // set to but you can change it to whatever works for you.  (including /dev/null if you don't want it at all).
                                 // You might find it useful to create an alias stop='touch /tmp/hevc.stop' if you want to stop a huge cron job quickly.
-  
   "remove_stale_stop" => true,  // If a "stop" file exists from a previous CTRL-C, remove it when you start ffhevc again if detected.
                                 // This may be helpful if you have cronjobs setup AND run commandline as well.  Retaining the "stop" file 
                                 // would prevent a cron from auto-resuming a job you CTRL-C quit.
-
   "show_progress" => true,      // Displays percentage of items scanned in media directory.
-
-  "extension" => "mkv",         // The desired media container format of your media files.
-  
   "rename" => false,            // Rename files to standard filenaming specification
                                 // see [https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/]
                                 //
                                 //  from:  movie.title.1999.Bluray.h264.DTS-HD.mkv
                                 //    to:  Movie Title (1999) [ WebDL x265 EAC3 ].mkv
+  "filesize_tollerance" => 1.00,// If the re-encoded file is greater than original by x%, keep re-encoded file (should be greater than or equal to 1.00)
+  "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php", 
+                                // conf file that contains your media directroy ffenc encoding settings
+                                // if the media_paths_file exists, those settings will override these (where applicable)
 
+  /**
+   *  Media File Settings
+   */
+  "extension" => "mkv",         // The desired media container format of your media files.
   "owner" => "",                // change owner (chown) on file (note: if you use a portable USB drive on seperate Operating Systems, don't set this)
   "group" => "Administrators",  // change group (chgrp) on file (note: okay to set even for portable USB drives)
-
-  "audio_boost" => "",          // Amplify audio track(s) ( 5dB, 10dB, 15dB, 20dB, 25dB)
-
-  "filter_foreign" => false,    // filters out all other language tracks that do not match default language track (defined below "language") 
-                                // ** requires mkvmerge in $PATH
-
-  "language" => "",             // Keep language track(s) "eng",  "eng,esp"
-
   "remove_illegal_chars"  => true,
                                 // Remove single quotes from filenames. (Not part of the renaming function.)
                                 //   from: Jim's Movie (1997) [...].mkv
                                 //     to: Jims Movie (1997).mkv
 
-  "display_banner" => true,     // Display the ffHEVC banner on run
+  /**
+   *  Media Video Settings
+   */
+  "quality_factor" => 1.33,     // Range 1.00 to 3.00 (QualityBased: vmin-vmax overrides VBR Quality. Bitrate will not drop below VBR regardless of vmin-vmax settings)
+  "video_qmin" => 0,            // Video encoding minimal variable quality tollerance (this is the high quality limit)
+  "video_qmax" => 29,           // Video encoding maximum variable quality tollerance (this is the lowest quality limit)
+  "video_fps" =>  60,           // Maximum Frames Per Second.  This value will be used for any media with higher FPS values. (24, 29.97, 30, 60)
+  "video_max_scale" => 2160,    // Maximum video resolution 
+  "video_profile" => "WEBDL",   // Used for filenaming after encoding i.e. (This is about what is streams are included in the media container) 
+                                //   from: [ "Remux" 2160p h264 ACC ]
+                                //     to: [ "WEBDL" 2160p x265 EAC3 ] 
+  
+  /**
+   *  Media Audio Settings
+   */
+  "audio_codec" => "eac3",      // The audio codec to convert to
+  "audio_channels" => 6,        // Maximum audio channels settings *if you use 8 (7.1), ensure you specified an audio_codec that supports it.
+  "audio_codecs" => [ "ac3", "eac3" ],  
+                                // allow these codecs to passthrough (do not convert unless bit rate is above limit)
+  "audio_bitrate" => "720k",    // Maximum audio bit rate (re-encode audio if above this value)
+  "audio_sample_rate" => 48000, // Maximum audio sample rate (44100, 48000, 96000, 192000)
+  "audio_boost" => "",          // Amplify audio track(s) ( 5dB, 10dB, 15dB, 20dB, 25dB) *Recommended between 5dB-10dB 
 
-  "my_config" => 'hevc-nvenc-mkv', // Map to the "opt" configuration below
+  /**
+   *  Language Track Settings
+   */
+  "filter_foreign" => false,    // filters out all other language tracks that do not match default language track (defined below "language") 
+                                // ** requires mkvmerge in $PATH
+  "language" => "eng",          // Only keep language track(s) "eng",  "eng,esp" (if filter_foreign is enabled)
+
+  /**
+   *  Encoder Engine Settings (Beware: Advanced!)
+   */
+  "engine_config" => 'hevc-nvenc-mkv', // Map to the "opt" configuration below
 
   /* 
   * Use nvenc if you have nVidia GFX card that support CUDA
@@ -70,5 +100,5 @@ if (file_exists($args['media_paths_file'])) {
   require_once $args['media_paths_file'];
 } else {
   print ansiColor("red") . $args['media_paths_file'] . " not found.\n" . 
-  ansiColor("blue") . "Please copy the example and configure it for your media directories.\n" . ansiColor();
+  ansiColor("magenta") . "Configure " . ansiColor("green") . $args['media_path_file'] . ansiColor("magenta") . " to override these settings for specified media directories.\n" . ansiColor();
 }

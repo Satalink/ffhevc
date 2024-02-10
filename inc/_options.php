@@ -2,7 +2,7 @@
 /**
  *   input: option
  *   output: options
- *   purpose: Set options using my_config setting in conf/default.php or configured profile defined
+ *   purpose: Set options using engine_config setting in conf/default.php or configured profile defined
  * 
  */
  
@@ -203,20 +203,19 @@ function getCommandLineOptions($options, $args) {
 function getDefaultOptions($args, $location_config) {
   $options = array();
   $options['locations'] = $location_config;  
-  $option = $args['opt'][$args['my_config']];
+  $option = $args['opt'][$args['engine_config']];
   $options = array_merge($options, setOption($option));
 
   /* Edit below settings to your preferences
    *    NOTE: conf/media_paths_keys OVERRIDE THESE VALUES
    */
 
-  $options['video']['quality_factor'] = 1.29;  //Range 1.00 to 3.00 (QualityBased: vmin-vmax overrides VBR Quality. Bitrate will not drop below VBR regardless of vmin-vmax settings)
-  $options['video']['filesize_tollerance'] = 1.05;  // If the re-encoded file is greater than original by x%, keep re-encoded file (should be greater than or equal to 1.00)
-  $options['video']['vmin'] = "1";
-  $options['video']['vmax'] = "35";  // The lower the value, the higher the quality/bitrate
-  $options['video']['max_streams'] = 1;
-  $options['video']['fps'] = 29.97;
-  $options['video']['scale'] = 2160;  // max video resolution setting
+  $options['video']['quality_factor'] = !empty($args['quality_factor']) ? $args['quality_factor'] : 1.33;
+  $options['video']['filesize_tollerance'] = (!empty($args['$filesize_tollerance']) && $args['filesize_tollerance'] > 1) ? $args['$video_filesize_tollerance'] : 1.00;
+  $options['video']['vmin'] = !empty($args['video_qmin']) ? $args['video_qmin'] : 0;
+  $options['video']['vmax'] = !empty($args['video_qmax']) ? $args['video_qmax'] : 29;
+  $options['video']['fps'] = !empty($args['video_fps']) ? $args['video_fps'] : 29.97;
+  $options['video']['scale'] = !empty($args['video_max_scale']) ? $args['video_max_scale'] : 2160;  // max video resolution setting
   $options['video']['contrast'] = 1;
   $options['video']['brightness'] = 0;
   $options['video']['saturation'] = 1;
@@ -227,22 +226,25 @@ function getDefaultOptions($args, $location_config) {
   $options['video']['hdr']['color_primary'] = array("bt601|","bt709","bt2020");
   $options['video']['hdr']['color_transfer'] = array("bt601","bt709","smpte2084");
   $options['video']['hdr']['color_space'] = array("bt601","bt709","bt2020nc");
-  $options['video']['profile'] = 'webdl'; //Used for filenaming after encoding
-
-  $options['audio']['codecs'] = array("ac3", "eac3");   //("aac", "ac3", "libopus", "mp3") allow these codecs : $options['video']['hdr']['codec'] = "libx265";zodesc (if bitrate is below location limits)
-  $options['audio']['codec'] = "eac3";  // "aac", "ac3", "libfdk_aac", "libopus", "mp3", "..." : "none"
-  $options['audio']['channels'] = 6;
-  $options['audio']['bitrate'] = "720k"; // default fallback maximum bitrate (bitrate should never be higher than this setting)
-  $options['audio']['sample_rate'] = 48000;
-  $options['audio']['max_streams'] = 1;  //Maximum number of audio streams to keep
+  $options['video']['profile'] = !empty($args['video_profile']) ? $args['video_profile'] : "WEBDL";
+  
+  $options['audio']['codec'] = !empty($args['audio_codec']) ? $args['audio_codec'] : "eac3";
+  $options['audio']['codecs'] = !empty($args['audio_codecs']) ? $args['audio_codecs'] : array("ac3", "eac3");
+  $options['audio']['channels'] = !empty($args['audio_channels']) ? $args['audio_channels'] : 6;
+  $options['audio']['bitrate'] = !empty($args['audio_bitrate']) ? $args['audio_bitrate'] : "720k";
+  $options['audio']['sample_rate'] = !empty($args['audio_sample_rate']) ? $args['audio_sample_rate'] : 48000;
 
   $options['args']['audioboost'] = !empty($args['audio_boost']) ? $args['audio_boost'] : "";
   $options['args']['extension'] = !empty($args['extension']) ? $args['extension'] : "mkv";
-  $options['args']['extensions'] = array("mkv", "mp4", "mpeg", "ts", "m2ts", "avi");  // acceptable formats to convert/encode
+  $options['args']['extensions'] = array("mkv", "mp4", "mpeg", "m4v", "ts", "m2ts", "avi", "av1", "3gp", "flv", "fv4", "ogv", "hevc", "webm", "wmv", "mov", "vob");  // acceptable formats to convert/encode
   $options['args']['owner'] = !empty($args['owner']) ? $args['owner'] : false;
   $options['args']['group'] = !empty($args['group']) ? $args['group'] : false;
   $options['args']['rename'] = !empty($args['rename']) ?: 0;
   $options['args']['remove_illegal_chars'] = !empty($args['remove_illegal_chars']) ?: 0;
+  $options['args']['language'] = !empty($args['language']) ? $args['language'] : null;
+
+  //Operational args
+  $options['args']['cooldown'] = !empty($args['cooldown']) ? $args['cooldown'] : 0; 
   $options['args']['test'] = false;
   $options['args']['verbose'] = !empty($options['args']['test']) ? $options['args']['test'] : false;  // if test, assume verbose
   $options['args']['stats_period'] = "1";  // ffmpeg stats reporting frequency in seconds
@@ -256,9 +258,7 @@ function getDefaultOptions($args, $location_config) {
   $options['args']['deletecorrupt'] = false; // if true, corrupt files will be automatically deleted. (can be annoying if you're not fully automated)
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
   $options['args']['filter_foreign'] = !empty($args['filter_foreign']) ? $args['filter_foreign'] : null;
-  $options['args']['language'] = !empty($args['language']) ? $args['language'] : null;
   $options['args']['delay'] = 0; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
-  $options['args']['cooldown'] = 0; // used as a cool down period between processing - helps keep extreme systems for over heating when converting an enourmous library over night (on my liquid cooled system, continuous extreme load actually raises the water tempurature to a point where it compromises the systems ability to regulate tempurature.
   $options['args']['loglev'] = "quiet";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['threads'] = 0;
   $options['args']['maxmuxqueuesize'] = 8192;
@@ -268,6 +268,7 @@ function getDefaultOptions($args, $location_config) {
     "yuv420p10le",
     "p010le",
   );
+
   $options['args']['cmdlnopts'] = array(
     "exclude",
     "followlinks",
