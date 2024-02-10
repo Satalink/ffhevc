@@ -261,6 +261,9 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   //Clear Old Tags
   //lowercase metadata names
  $keep_ftags = array(
+    "major_brand",
+    "compatible_brands",
+    "date",
     "exclude",
     "mkvmerged",
     "audioboost"
@@ -283,6 +286,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
     "duration",
     "duration-" . $options['args']['language'],
     "creation_date",
+    "handler_name",
     "language",
     "channels",
     "sample_rate",
