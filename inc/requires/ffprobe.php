@@ -222,6 +222,10 @@ function ffprobe($file, $options, $quiet=false) {
         unlink($file['basename']);
       }
       else {
+        // TODO fix in info / $options is not returned.
+        $tag_data = [ array("name" => "exclude", "value" => "1") ];
+        setMediaFormatTag($file, $tag_data);
+        $info = array();
         $options['args']['exclude'] = true;
       }
     }
@@ -234,6 +238,8 @@ function ffprobe($file, $options, $quiet=false) {
       }
       print $file['basename'] . " NO Video or Audio\n";
       $info = array();
+    } else {
+      ffprobe($file, $options, true);
     }
 
     // Check if color_range is in options
