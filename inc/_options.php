@@ -257,7 +257,7 @@ function getDefaultOptions($args, $location_config) {
   $options['args']['keeporiginal'] = false; //if true, the original file will be retained. (renamed as filename.orig.ext)
   $options['args']['deletecorrupt'] = false; // if true, corrupt files will be automatically deleted. (can be annoying if you're not fully automated)
   $options['args']['permissions'] = 0664; //Set file permission to (int value).  Set to False to disable.
-  $options['args']['filter_foreign'] = !empty($args['filter_foreign']) ? $args['filter_foreign'] : null;
+  $options['args']['filter_foreign'] = !empty($args['filter_foreign']) ? $args['filter_foreign'] : false;
   $options['args']['delay'] = 0; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
   $options['args']['loglev'] = "quiet";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['threads'] = 0;

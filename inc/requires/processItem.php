@@ -110,9 +110,13 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
 //Preprocess with mkvmerge (if in path)
   if (`which mkvmerge 2> /dev/null` && !$options['args']['nomkvmerge']) {
        if ( !$info['format']['mkvmerged']  && !file_exists($options['args']['stop']) && !$options['args']['test']) {
-          $cmdln = "mkvmerge" .
-          " --language 0:" . $options['args']['language'] .
-          " --language 1:" . $options['args']['language'] .
+          $cmdln = "mkvmerge";
+          if (!empty($options['args']['language'])) {
+            $cmdln .= 
+            " --language 0:" . $options['args']['language'] .
+            " --language 1:" . $options['args']['language'];
+          }
+          $cmdln .=
           " --video-tracks " . $info['video']['index'] .
           " --audio-tracks " . $info['audio']['index'] .
           " --track-order " . "0:".$info['video']['index'].","."1:".$info['audio']['index'] .
@@ -296,11 +300,11 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
       "[diff] " . ansiColor("green") . formatBytes(($inforig['format']['size'] - $info['format']['size']), 2, true) . ansiColor("blue") . " " .
       ")\n" . ansiColor();
     print charTimes(80, "#", "blue") . "\n\n";
-    if (isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
+    if (isset($fileorig) && isset($stats['byteSaved']) && isset($stats['reEncoded'])) {
       $stats['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
       $stats['reEncoded']++;
     }
-    if (file_exists($fileorig['basename']) && !$options['args']['keeporiginal']) {
+    if (isset($fileorig) && file_exists($fileorig['basename']) && !$options['args']['keeporiginal']) {
       unlink($fileorig['basename']);
     }
     if (!empty($convorig) && file_exists($convorig['basename'])) {
