@@ -336,8 +336,8 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
 
   $tags_data = [];  $tag_data = [];
   if (!empty($options['args']['exclude'])) $tags_data['exclude'] = $options['args']['exclude'];
-  if (!empty($options['args']['mkvmerged'])) $tags_data['mkvmerged'] = $options['args']['mkvmerged'];
-  if (!empty($options['args']['audioboost'])) $tags_data['audioboost'] = $options['args']['audioboost'];
+  if (!empty($options['args']['mkvmerged']) && empty($options['args']['exclude'])) $tags_data['mkvmerged'] = $options['args']['mkvmerged'];
+  if (!empty($options['args']['audioboost']) && empty($options['args']['exclude'])) $tags_data['audioboost'] = $options['args']['audioboost'];
 
   // Set ffHEVC Media Format Tags 
   if (!empty($info) && !$options['args']['override']) {
