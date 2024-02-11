@@ -216,9 +216,14 @@ function ffprobe($file, $options, $quiet=false) {
         $missing += ' audio';
       }
       print ansiColor("blue") . " " . $file['basename'] . " $missing " . $options['args']['language'] . " track\n" . ansiColor();
-      print "Delete " . $file['basename'] . "?  [Y/n] >";
+      print "Delete " . $file['basename'] . "?  [y/N] >";
       $del_response = trim(fgets(STDIN));
-      if (!preg_match('/n/i', $del_response)) unlink($file['basename']);
+      if (preg_match('/y/i', $del_response)) {
+        unlink($file['basename']);
+      }
+      else {
+        $options['args']['exclude'] = true;
+      }
     }
     if (!$options['args']['exclude'] && !$options['args']['test']) {
       if (file_exists($file['basename'])) {
