@@ -178,7 +178,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
           " -metadata:s:a:0 bps=" . $info['audio']['bps'] .
           " -metadata:s:a:0 title= ";
         if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
-          $options['args']['meta'] .= " -metadata:s:a:0 audioboost=" . $options['args']['audioboost'];
+          $options['args']['meta'] .= " -metadata:s:a:0 audioboost=" . $options['args']['audioboost'] . '"';
         }
         if (!preg_match("/copy/i", $options['args']['video'])) {
           print ansiColor("yellow") . "Audio Inspection ->" . ansiColor() . "copy\n";
