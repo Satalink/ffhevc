@@ -213,7 +213,7 @@ function ffprobe($file, $options, $quiet=false) {
         $missing = "video";
       }
       if (empty($info['audio'])) {
-        $missing += ' audio';
+        $missing .= ' audio';
       }
       print ansiColor("blue") . " " . $file['basename'] . " $missing " . $options['args']['language'] . " track\n" . ansiColor();
       print "Delete " . $file['basename'] . "?  [y/N] >";
