@@ -55,7 +55,7 @@ function ffprobe($file, $options, $quiet=false) {
 
   $format_tags = $xml->format->tags;
   if (!isset($format_tags->tag)) {
-    $format_tags->tag = null;
+    $format_tags->tag = [];
   }
 
   foreach ($format_tags->tag as $tag) {
