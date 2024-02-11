@@ -57,25 +57,21 @@ function ffprobe($file, $options, $quiet=false) {
   if (!isset($format_tags->tag)) {
     $format_tags->tag = null;
   }
-  $ftags = array();
+
   foreach ($format_tags->tag as $tag) {
     $tag_key = strtolower(getXmlAttribute($tag, "key"));
     $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
     if (preg_match('/^exclude$/', $tag_key)) {
-      $info['ftags'] = $info['format']['exclude'] = $tag_val;
-      continue;
+      $info['ftags'][] = $info['format']['exclude'] = $tag_val;
     }
-    if (preg_match('/^mkvmerged$/', $tag_key)) {
-      $info['format']['exclude'] = $tag_val;
-      continue;
+    elseif (preg_match('/^mkvmerged$/', $tag_key)) {
+      $info['ftags'][] = $info['format']['mkvmerged'] = $tag_val;
     }
     elseif (preg_match('/audioboost/', $tag_key)) {
-      $info['format']['audioboost'] = "$tag_val";
-      continue;
+      $info['ftags'][] = $info['format']['audioboost'] = "$tag_val";
     }     
     $ftags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
   }
-  $info['ftags'] = $ftags;
 
   if (isset($xml->streams->stream)) {
     foreach ($xml->streams->stream as $stream) {

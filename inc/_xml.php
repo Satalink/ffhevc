@@ -78,10 +78,11 @@ function setMediaFormatTag($file, $data) {
   $xml = new SimpleXMLElement("<Tags></Tags>");
   $xml->addChild("Tag");
   $xml->Tag->addChild("Targets");
-  foreach ($data as $itemkey) {
-    $xml->Tag->addChild("Simple");
-    $xml->Tag->Simple->addChild('Name', $itemkey['name']);
-    $xml->Tag->Simple->addChild('String', $itemkey['value']);
+  
+  foreach ($data as $itemkey => $prop) {
+    $simple = $xml->Tag->addChild("Simple");
+    $name = $simple->addChild("Name", $prop['name']);
+    $string = $simple->addChild("String", $prop['value']);
   }
   $xml->asXML($xml_file);
 

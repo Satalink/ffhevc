@@ -330,35 +330,24 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
     }
   }
 
+  $tags_data = [];  $tag_data = [];
+  if (!empty($options['args']['exclude'])) $tags_data['exclude'] = $options['args']['exclude'];
+  if (!empty($options['args']['mkvmerged'])) $tags_data['mkvmerged'] = $options['args']['mkvmerged'];
+  if (!empty($options['args']['audioboost'])) $tags_data['audioboost'] = $options['args']['audioboost'];
+
   // Set ffHEVC Media Format Tags 
-  if ($options['args']['exclude'] && !empty($info) && !$options['args']['override']) {
+  if (!empty($info) && !$options['args']['override']) {
     if (file_exists($file['basename'])) {
-      $tag_data = [ array("name" => "exclude", "value" => "1") ];
-      $error_status = setMediaFormatTag($file, $tag_data);
-      if (!$error_status) {
-        ffprobe($file, $options, true);
-      }
-    }
-    if ($options['args']['mkvmerged'] && !$options['args']['exclude'] && !empty($info) && !$options['args']['override']) {
-      if (file_exists($file['basename'])) {
-        $tag_data = [ array("name" => "mkvmerged", "value" => "1") ];
-        $error_status = setMediaFormatTag($file, $tag_data);
-        if (!$error_status) {
-          ffprobe($file, $options, true);
+      foreach ($tags_data as $tag => $tag_val) {
+        if(!empty($tag_val)) {
+          $tag_data[] = array("name" => "$tag", "value" => "$tag_val");
         }
       }
-    }
-    if ($options['args']['audioboost'] && !empty($info) && !$options['args']['exclude'] && !$options['args']['override']) {
-      if (file_exists($file['basename'])) {
-        $tag_data = [ array("name" => "audioboost", "value" => $options['args']['audioboost']) ];
-        $error_status = setMediaFormatTag($file, $tag_data);
-        if (!$error_status) {
-          ffprobe($file, $options, true);
-        }
-      } 
+      setMediaFormatTag($file, $tag_data);
+      ffprobe($file, $options, true);
     }
   }
-
+  
   if ($options['args']['cooldown'] > 0) {
     print ansiColor("red") . "Cooldown period: " . $options['args']['cooldown'] . " seconds.\n" . ansiColor();
     sleep($options['args']['cooldown']);
