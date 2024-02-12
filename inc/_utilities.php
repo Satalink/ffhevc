@@ -17,10 +17,10 @@ function checkProcessCount($args, $options, $stats) {
     exec("ps -efW|grep -v grep|grep ffmpeg|wc -l", $ffcount);
     exec("ps -efW|grep -v grep|grep mkvmerge|wc -l", $mergecount);
     if ($ffcount[0] >= $args['max_processes']) {
-      exit(ansiColor("red") ."ERR: $ffcount[0] FFMPEG processes are running, max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
+      exit(ansiColor("red") ."ERR: $ffcount[0] FFMPEG process(es) running, max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
     }
     elseif ($mergecount[0] >= $args['max_processes']) {
-      exit(ansiColor("red") . "ERR: $mergecount[0] MKVMERGE processes are running, , max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
+      exit(ansiColor("red") . "ERR: $mergecount[0] MKVMERGE process(es) running, , max processes (" . ansiColor("blue") . $args['max_processes'] . ansiColor("red") . ") reached\n" . ansiColor());
     }
   }
 }
@@ -52,6 +52,25 @@ function stop($options, $time=null) {
     file_put_contents($options['args']['stop'], $time, FILE_APPEND);
   }
   return;
+}
+
+function stopcheck($options) {
+  $status = false;
+  if (file_exists($options['args']['stop'])) {
+    if (filesize($options['args']['stop']) && $options['args']['remove_stale_stop']) {
+      print charTimes(40, "#", "blue") . "\n";
+      print ansiColor("blue") . "#  STOP FILE DETECTED: " . ansiColor("red") . $options['args']['stop'] . ansiColor() . "\n";
+      print ansiColor("blue") . "#  Previous process was CTRL-C stopped on " . ansiColor() . "\n";
+      print ansiColor("blue") . "#  " . date("Y-m-d h:i:s", filectime($options['args']['stop'])) . ansiColor() . "\n";
+      print charTimes(40, "#", "blue") . "\n";
+      $status = true;
+      exit(1);
+    } else {
+      unlink($options['args']['stop']);  //Remove for previous normal shutdown
+      $status = true;
+    }
+  }
+  return($status);
 }
 
 function moduleCheck($module) {

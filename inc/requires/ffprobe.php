@@ -205,7 +205,7 @@ function ffprobe($file, $options, $quiet=false) {
     print ansiColor() . "\n";
   }
   elseif (
-    (empty($info['video']) || empty($info['audio'])) && !$options['args']['test']
+    (!empty($info) && empty($info['video']) || empty($info['audio'])) && !$options['args']['test']
   ) {
     $missing = null;
     if ($file['extension'] == $options['args']['extension']) {
@@ -217,40 +217,40 @@ function ffprobe($file, $options, $quiet=false) {
       }
       //TODO  refactor and fix no video/audio tracks detected
       print ansiColor("blue") . " " . $file['basename'] . " $missing " . $options['args']['language'] . " track\n" . ansiColor();
-      // print "Delete " . $file['basename'] . "?  [y/N] >";
-      // $del_response = trim(fgets(STDIN));
-      // if (preg_match('/y/i', $del_response)) {
-      //   unlink($file['basename']);
-      // }
-      // else {
-      //   // TODO fix in info / $options is not returned.
-      //   $tag_data = [ array("name" => "exclude", "value" => "1") ];
-      //   setMediaFormatTag($file, $tag_data);
-      //   $info = array();
-      //   $options['args']['exclude'] = true;
-      // }
+      print "Delete " . $file['basename'] . "?  [y/N] >";
+      $del_response = trim(fgets(STDIN));
+      if (preg_match('/y/i', $del_response)) {
+        unlink($file['basename']);
+      }
+      else {
+        // TODO fix in info / $options is not returned.
+        $tag_data = [ array("name" => "exclude", "value" => "1") ];
+        setMediaFormatTag($file, $tag_data);
+        $info = array();
+        $options['args']['exclude'] = true;
+      }
     }
-    // if (!$options['args']['exclude'] && !$options['args']['test']) {
-    //   if (file_exists($file['basename'])) {
-    //     unlink($file['basename']);
-    //   }
-    //   if (file_exists(".xml/" . $file['filename'] . ".xml")) {
-    //     unlink("./.xml/" . $file['filename'] . ".xml");
-    //   }
-    //   print $file['basename'] . " NO Video or Audio\n";
-    //   $info = array();
-    // } else {
-    //   ffprobe($file, $options, true);
-    // }
+    if (!$options['args']['exclude'] && !$options['args']['test']) {
+      if (file_exists($file['basename'])) {
+        unlink($file['basename']);
+      }
+      if (file_exists(".xml/" . $file['filename'] . ".xml")) {
+        unlink("./.xml/" . $file['filename'] . ".xml");
+      }
+      print $file['basename'] . " NO Video or Audio\n";
+      $info = array();
+    } else {
+      ffprobe($file, $options, true);
+    }
 
-    // // Check if color_range is in options
-    // if (
-    //   !empty($info['video']['color_range']) && 
-    //   in_array($info['video']['color_range'],$options['video']['hdr']['color_range'])
-    // ) {
-    //   print "Incompatible color_range detected: " . $file['basename'] . "\n";
-    //   $info = array();
-    // }
+    // Check if color_range is in options
+    if (
+      !empty($info['video']['color_range']) && 
+      in_array($info['video']['color_range'],$options['video']['hdr']['color_range'])
+    ) {
+      print "Incompatible color_range detected: " . $file['basename'] . "\n";
+      $info = array();
+    }
   }
   return(array($file, $info));
 }

@@ -263,6 +263,7 @@ function getDefaultOptions($args, $location_config) {
   $options['args']['threads'] = 0;
   $options['args']['maxmuxqueuesize'] = 8192;
   $options['args']['stop'] = isset($args['stop']) ? $args['stop'] : "/tmp/hevc.stop";
+  $options['args']['remove_stale_stop'] = isset($args['remove_stale_stop']) ? $args['remove_stale_stop'] : false;
   $options['args']['pix_fmts'] = array(//acceptable pix_fmts
     "yuv420p",
     "yuv420p10le",

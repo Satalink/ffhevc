@@ -8,7 +8,7 @@
 function processRecursive($dir, $options, $args, $stats) {
   // Get Total Files to Process (once)
   if (!isset($stats['total_files'])) {
-    $cmdln = "find '" . $dir . "' -not -path '*_UNPACK_*'"; $i=0;
+    $cmdln = "find '" . $dir . "' -not -path '*_UNPACK_*' -not -path '*_TEST_*'"; $i=0;
     foreach ($options['args']['extensions'] as $ext) {
       if ($i) $cmdln .= " -or";
       $cmdln .= " -name '*." . $ext . "'"; $i++;
@@ -29,7 +29,7 @@ function processRecursive($dir, $options, $args, $stats) {
     }
 
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
-      if (!preg_match("/_UNPACK_/", $item)) {
+      if (!preg_match("/_UNPACK_|_TEST_/", $item)) {
         cleanXMLDir($dir, $options);
         $stats = processRecursive($dir . DIRECTORY_SEPARATOR . $item, $options, $args, $stats);
       }

@@ -10,11 +10,7 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
  
   $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . "$item");
   $mkvmerge_temp_ext = "." . $file['extension'] . "." . "merge";
-  // Stop Detected
-  if (file_exists($options['args']['stop'])) {
-    return($stats);
-  }
-
+  stopcheck($options);
   // Exclusions
   if (
     !isset($file['extension']) || 
@@ -32,7 +28,6 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
     $status = setMediaFormatTag($file, $tag_data);
     return($stats); 
   }
-
   //  Show Running Progress
   if ($args['show_progress']) {
     $stats['total_files'] = !empty($stats['total_files']) ? $stats['total_files'] : 1;
