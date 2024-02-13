@@ -132,16 +132,12 @@ function ffanalyze($info, $options, $args, $dir, $file) {
   }
 
   //Audio
-  if ($options['audio']['bitrate'] == 0) {
-    $info['audio'] = null;
-  }
-  
   if (isset($info) && !empty($info['audio']) && isset($options) && !empty($options['audio'])) {
     $title = isset($info['audio']['title']) ? $info['audio']['title'] : "Default Track";
     if (!preg_match("/comment/i", $title)) {
       if (
-        isset($info['audio']['codec']) && isset($options['audio']['codecs']) &&
-        in_array($info['audio']['codec'], $options['audio']['codecs']) &&
+        isset($info['audio']['codec_name']) && isset($options['audio']['codecs']) &&
+        in_array($info['audio']['codec_name'], $options['audio']['codecs']) &&
         (int) ((filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000)) &&
         $info['audio']['channels'] <= $options['audio']['channels'] &&
         !$options['args']['override']
@@ -171,7 +167,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
         }
         $options['args']['meta'] .= 
           " -metadata:s:a:0 language=" . $options['args']['language'] . 
-          " -metadata:s:a:0 codec_name=" . $info['audio']['codec'] .
+          " -metadata:s:a:0 codec_name=" . $info['audio']['codec_name'] .
           " -metadata:s:a:0 channels=" . $info['audio']['channels'] .
           " -metadata:s:a:0 bit_rate=" . $info['audio']['bitrate'] .
           " -metadata:s:a:0 sample_rate=" . $info['audio']['sample_rate'] .
@@ -187,7 +183,7 @@ function ffanalyze($info, $options, $args, $dir, $file) {
       else {
         print ansiColor("green") . $file['basename'] . "\n" . ansiColor();
         print ansiColor("blue") . "Audio Inspection ->" . ansiColor() .
-          $info['audio']['codec'] . ":" . $options['audio']['codec'] . "," .
+          $info['audio']['codec_name'] . ":" . $options['audio']['codec'] . "," .
           $info['audio']['bitrate'] . "<=" . (filter_var($options['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000) . "," .
           $info['audio']['channels'] . "ch<=" . $options['audio']['channels'] . "ch\n";
         if (is_numeric($info['audio']['bitrate'])) {

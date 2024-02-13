@@ -74,7 +74,7 @@ $args = array(
    */
   "filter_foreign" => false,    // filters out all other language tracks that do not match default language track (defined below "language") 
                                 // ** requires mkvmerge in $PATH
-  "language" => "eng",          // Only keep language track(s) "eng",  "eng,esp" (if filter_foreign is enabled)
+  "language" => "eng",          // Only keep language track(s) "eng",  "eng,esp" (filter_foreign must be enabled)
 
   /**
    *  Encoder Engine Settings (Beware: Advanced!)

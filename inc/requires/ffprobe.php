@@ -126,7 +126,6 @@ function ffprobe($file, $options, $quiet=false) {
             $info['audio']['index'] = getXmlAttribute($stream, "index") ? getXmlAttribute($stream, "index") : "";
             $info['audio']['title'] = getXmlAttribute($stream, "title") ? getXmlAttribute($stream, "title") : "";
             $info['audio']['codec_type'] = getXmlAttribute($stream, "codec_type") ? getXmlAttribute($stream, "codec_type") : "";
-            $info['audio']['codec'] = getXmlAttribute($stream, "codec_name") ? getXmlAttribute($stream, "codec_name") : "";
             $info['audio']['codec_name'] = getXmlAttribute($stream, "codec_name") ? getXmlAttribute($stream, "codec_name") : "";
             $info['audio']['channels'] = getXmlAttribute($stream, "channels") ? getXmlAttribute($stream, "channels") : "";
             $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate") ? getXmlAttribute($stream, "sample_rate") : "";
@@ -140,14 +139,19 @@ function ffprobe($file, $options, $quiet=false) {
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
               if ($tag_key == "language") {
-                if ($tag_val !== $options['args']['language']) {  
-                  $info['filters']['audio']['language'][] = $tag_val;
-                  $info['audio'] = array();
+                if (preg_match('/$tag_val/', $options['args']['language'])) {              
+                  $info['audio']['language'] = $tag_val;                  
                   continue;
                 }
-                else {
-                  $info['audio']['language'] = $tag_val;
-                }
+                // else {
+                //   if ($options['args']['filter_foreign']) {
+                //     $info['audio'] = array();
+                //     break;
+                //   }
+                //   else {
+                //     $info['audio']['language'] = $tag_val;
+                //   }
+                // }
               }
               if (preg_match('/^bps$/i', $tag_key)) {
                 if (empty($info['audio']['bitrate'])) {
@@ -196,7 +200,7 @@ function ffprobe($file, $options, $quiet=false) {
     }
     if (!empty($info['audio']) && !empty($info['audio']['bitrate'])) {
       charTimes(7, " ");
-      print $info['audio']['codec_type'] . ":" . $info['audio']['codec'] . ", CH." . $info['audio']['channels'] . ", " . formatBytes($info['audio']['bitrate'], 0, false) . "PS\n";
+      print $info['audio']['codec_type'] . ":" . $info['audio']['codec_name'] . ", CH." . $info['audio']['channels'] . ", " . formatBytes($info['audio']['bitrate'], 0, false) . "PS\n";
     }
     if (!empty($info['subtitle'])) {
       charTimes(7, " ");
@@ -216,8 +220,8 @@ function ffprobe($file, $options, $quiet=false) {
         $missing .= ' audio';
       }
       //TODO  refactor and fix no video/audio tracks detected
-      print ansiColor("blue") . " " . $file['basename'] . " $missing " . $options['args']['language'] . " track\n" . ansiColor();
-      print "Delete " . $file['basename'] . "?  [y/N] >";
+      print ansiColor("red") . "MISSING: " . strtoupper($options['args']['language']) . " language audio track\n" . ansiColor();
+      print "Delete " . ansiColor("green") . $file['basename'] . ansiColor() . "?  [y/N] >";
       $del_response = trim(fgets(STDIN));
       if (preg_match('/y/i', $del_response)) {
         unlink($file['basename']);
@@ -228,6 +232,7 @@ function ffprobe($file, $options, $quiet=false) {
         setMediaFormatTag($file, $tag_data);
         $info = array();
         $options['args']['exclude'] = true;
+        return(array($file, $info));
       }
     }
     if (!$options['args']['exclude'] && !$options['args']['test']) {
