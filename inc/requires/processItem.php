@@ -72,8 +72,8 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
       }
       if (file_exists($file['filename'] . "." . $options['args']['extension'])) { 
         $converted_file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
-        $convorig = $file;
         rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
+        $convorig = pathinfo($file['filename'] . ".orig." . $file['extension']);
         $file = pathinfo($converted_file['filename'] . "." . $options['args']['extension']);
         touch($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $mtime); //retain original timestamp
       }
@@ -317,18 +317,14 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
       print ansiColor("red") . "    $reason\n" . ansiColor();
     }
     //conversion failed : Let's cleanup and exclude
-    if (file_exists($file['filename'] . ".hevc")) {
-      unlink($file['filename'] . ".hevc");
-    }
-    if (file_exists($file['basename']) && file_exists($fileorig['basename']) ) {
-      unlink($file['basename']);
-      rename($fileorig['basename'], $file['basename']);
-      $info = ffprobe($file, $options, true)[1];
-      $file = rename_byCodecs($file, $options, $info);
-      $file = rename_PlexStandards($file, $options);
-      $options['args']['exclude'] = true;
-      print charTimes(80, "#", "blue") . "\n\n";
-    }
+    if (file_exists($file['filename'] . ".hevc"))  unlink($file['filename'] . ".hevc");
+    if (file_exists($file['basename'])) unlink($file['basename']);
+    if (file_exists($fileorig['basename'])) rename($fileorig['basename'], $file['basename']);
+    if (file_exists($convorig['basename'])) rename($convorig['basename'], $file['filename'] . "." . $convorig['extension']);
+    
+    $info = ffprobe($file, $options, true)[1];
+    $options['args']['exclude'] = true;
+    print charTimes(80, "#", "blue") . "\n\n";
   }
 
   $tags_data = [];  $tag_data = [];
@@ -340,11 +336,16 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
   if (!empty($info) && !$options['args']['override']) {
     if (file_exists($file['basename'])) {
       foreach ($tags_data as $tag => $tag_val) {
-        if(!empty($tag_val)) {
+        if(!empty($tag_val) && $file['extension'] == "mkv") {
           $tag_data[] = array("name" => "$tag", "value" => "$tag_val");
         }
+        else {
+          setXmlFormatAttribute($file, "$tag", "$tag_val");
+        }
       }
-      setMediaFormatTag($file, $tag_data);
+      if ($file['extension'] == "mkv") {
+        setMediaFormatTag($file, $tag_data);
+      }
       ffprobe($file, $options, true);
     }
   }
@@ -357,4 +358,5 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
   chdir($curdir);
   return($stats);
 }
+
 
