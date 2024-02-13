@@ -133,7 +133,9 @@ function processItem($dir, $item, $options, $args, $stats, $info=[], $inforig=[]
         }
 
         if (file_exists($file['filename'] . $mkvmerge_temp_ext ) && !file_exists($options['args']['stop'])) {
-          rename($file['basename'], $file['filename'] . ".orig." . $file['extension']); 
+          if (!file_exists($file['filename']) . ".orig." . $file['extension']) {
+            rename($file['basename'], $file['filename'] . ".orig." . $file['extension']); 
+          }
           rename($file['filename'] . $mkvmerge_temp_ext, $file['filename'] . "." . $options['args']['extension']);
           touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
           list($file, $info) = ffprobe($file, $options, true);
