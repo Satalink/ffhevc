@@ -138,6 +138,8 @@ function processItem($dir, $item, $options, $args, $global)
     print ansiColor("blue") . "HEVC Encoding: " . ansiColor("yellow") . $file['basename'] . ansiColor("yellow") . "\n";
     if (isset($options['info'])) {
       $rts = preg_match('/copy/', $options['info']['video']) ? 11 : 38;
+    } else {
+      $rts = 38;
     }
     print charTimes($rts, " ") . "run time=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
     exec("$cmdln", $output, $status);
