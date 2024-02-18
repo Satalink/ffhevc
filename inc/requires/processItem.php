@@ -136,7 +136,7 @@ function processItem($dir, $item, $options, $args, $global)
   }
   if (!$options['args']['test'] && !isStopped($options)) {
     print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor("yellow") . "\n";
-    $rts =  isset($options['info']['video']) ? 38 : 12;
+    $rts = preg_match('/copy/', $options['info']['video']) ? 11 : 38;
     print charTimes($rts, " ") . "run time=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
     exec("$cmdln", $output, $status);
     if ($status == 255) {
