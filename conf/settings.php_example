@@ -32,7 +32,8 @@
                                 //    to:  Movie Title (1999) [ WebDL x265 EAC3 ].mkv
   "ignore_delete_prompt" => false,  
                                 // Skip prompt when deleting items that are missing audio or video tracks.
-
+  "ffmpeg_stats_period"  => "0.5",
+                                // Interval in tenths of seconds ffmpeg reports encoding stats while encoding.
   "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php", 
                                 // conf file that contains your media directroy ffenc encoding settings (leave the __DIR__ reference)
                                 // if the media_paths_file exists, those settings will override these (where applicable)
