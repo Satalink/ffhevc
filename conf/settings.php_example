@@ -6,7 +6,7 @@
  *
  */
 
-$args = array(
+ $args = array(
 
   // ffHEVC Configuration
 
@@ -30,9 +30,11 @@ $args = array(
                                 //
                                 //  from:  movie.title.1999.Bluray.h264.DTS-HD.mkv
                                 //    to:  Movie Title (1999) [ WebDL x265 EAC3 ].mkv
-  "filesize_tollerance" => 1.00,// If the re-encoded file is greater than original by x%, keep re-encoded file (should be greater than or equal to 1.00)
+  "ignore_delete_prompt" => false,  
+                                // Skip prompt when deleting items that are missing audio or video tracks.
+
   "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php", 
-                                // conf file that contains your media directroy ffenc encoding settings
+                                // conf file that contains your media directroy ffenc encoding settings (leave the __DIR__ reference)
                                 // if the media_paths_file exists, those settings will override these (where applicable)
 
   /**
@@ -63,8 +65,7 @@ $args = array(
    */
   "audio_codec" => "eac3",      // The audio codec to convert to
   "audio_channels" => 6,        // Maximum audio channels settings *if you use 8 (7.1), ensure you specified an audio_codec that supports it.
-  "audio_codecs" => [ "ac3", "eac3" ],  
-                                // allow these codecs to passthrough (do not convert unless bit rate is above limit)
+  "audio_codecs" => [ "ac3", "eac3" ],  // accept these codecs as is (do not convert unless bit rate is above limit)
   "audio_bitrate" => "720k",    // Maximum audio bit rate (re-encode audio if above this value)
   "audio_sample_rate" => 48000, // Maximum audio sample rate (44100, 48000, 96000, 192000)
   "audio_boost" => "",          // Amplify audio track(s) ( 5dB, 10dB, 15dB, 20dB, 25dB) *Recommended between 5dB-10dB 
@@ -72,9 +73,9 @@ $args = array(
   /**
    *  Language Track Settings
    */
-  "filter_foreign" => false,    // filters out all other language tracks that do not match default language track (defined below "language") 
+  "filter_foreign" => true,    // filters out all other language tracks that do not match default language track (defined below "language") 
                                 // ** requires mkvmerge in $PATH
-  "language" => "eng",          // Only keep language track(s) "eng",  "eng,esp" (filter_foreign must be enabled)
+  "language" => "eng",          // Only keep language track(s) "eng",  "eng,esp" (if filter_foreign is enabled)
 
   /**
    *  Encoder Engine Settings (Beware: Advanced!)

@@ -35,6 +35,7 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
   <li><a href="https://www.matroska.org/downloads/mkvtoolnix.html" target=_blank>mkvmerge</a> (optional but recommeneded)</li>
 </ul>
 
+
 ### Installing
 
   PHP<br>
@@ -62,6 +63,7 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
 
   ffhevc --help to show command line options. Using command line options overrides media_path_key settings. This allows you to specifically encode an mkv file inside of a media directory with custom quality.  If your custom encoding is higher than your directories media_path_key configuration allows, you can use --exclude to tell ffhevc to ignore the custom encoding when it scans the media directory during a manual scan or cron run.
 
+
 ### Usage <a name = "examples"></a>
 
   > $> ffhevc.php
@@ -75,6 +77,11 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
   > $> ffhevc.php mov
 
   If you supply a "key" (defined in conf/media_paths_keys.php), the path defined in that key will be scanned and processed using the settings defined for that key.
+
+  > $> ffhevc.php mov amov
+
+  You can supply multiple keys to process several defined media paths in one job.
+
 
 ### Plex Naming Standard <a name = "naming"></a>
 

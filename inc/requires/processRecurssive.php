@@ -5,38 +5,41 @@
  *  purpose:  Process all mkv items in current directory recursively 
  */
 
-function processRecursive($dir, $options, $args, $stats) {
+function processRecursive($dir, $options, $args, $global)
+{
   // Get Total Files to Process (once)
-  if (!isset($stats['total_files'])) {
-    $cmdln = "find '" . $dir . "' -not -path '*_UNPACK_*' -not -path '*_TEST_*'"; $i=0;
+  if (!isset($global['total_files'])) {
+    $cmdln = "find '" . $dir . "' -not -path '*_UNPACK_*' -not -path '*_TEST_*'";
+    $i     = 0;
     foreach ($options['args']['extensions'] as $ext) {
-      if ($i) $cmdln .= " -or";
-      $cmdln .= " -name '*." . $ext . "'"; $i++;
+      if ($i)
+        $cmdln .= " -or";
+      $cmdln .= " -name '*." . $ext . "'";
+      $i++;
     }
     $cmdln .= "|wc -l";
-    exec("$cmdln", $tf);    
-    $stats['total_files'] = (int) $tf[0];
+    exec("$cmdln", $tf);
+    $global['total_files'] = (int) $tf[0];
   }
 
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
     if (file_exists($options['args']['stop'])) {
-      return($stats);
+      return ($global);
     }
 
-    if (!$options['args']['followlinks'] && is_link($dir . DIRECTORY_SEPARATOR . $item )) {
+    if (!$options['args']['followlinks'] && is_link($dir . DIRECTORY_SEPARATOR . $item)) {
       continue;  //skip symbolic links
     }
 
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
       if (!preg_match("/_UNPACK_|_TEST_/", $item)) {
+        $global = processRecursive($dir . DIRECTORY_SEPARATOR . $item, $options, $args, $global);
         cleanXMLDir($dir, $options);
-        $stats = processRecursive($dir . DIRECTORY_SEPARATOR . $item, $options, $args, $stats);
       }
-    }
-    else {
-      $stats = processItem($dir, $item, $options, $args, $stats);
+    } else {
+      $global = processItem($dir, $item, $options, $args, $global);
     }
   }
-  return($stats);
+  return ($global);
 }

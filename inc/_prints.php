@@ -17,7 +17,8 @@ function ansiColor($color=null) {
   );
 
   $ansi = "\033[0m";
-  if (isset($color)) {
+  $color = isset($color) ? $color : false;
+  if ($color) {
     $ansi = "\033[01;3" . $colors[$color] . "m";
   }
 
@@ -36,30 +37,25 @@ function appBanner($banner) {
   print "\n"; charTimes(80, "#", "blue"); print "\n\n";
 }
 
-/*  For performance debugging */
-function mmt($name) {
-  print "function: $name: " . microtime(true) . "\n";
+function charTimes($times, $char, $color=null, $crlf=null) {
+   print isset($color) ? ansiColor("$color"):'';
+   for($i=0;$i<=$times;$i++) {$crlf.="$char";} print "$crlf";
+   print isset($color) ? ansiColor():'';
 }
 
-function charTimes($x, $c, $r=null, $y=null) {
-  print isset($r) ? ansiColor("$r"):'';
-   for($i=0;$i<=$x;$i++) {$y.="$c";} print "$y";
-   print isset($r) ? ansiColor():'';
-}
-
-function showStats($stats) {
+function showStats($global) {
   print "\n";
   print "\n" . charTimes(80, "#", "blue");   
-  if ($stats['processed']) {
-    print ansiColor("blue") . "#  Scanned Videos: " . ansiColor("green") . $stats['processed'] . "\n" . ansiColor();
+  if ($global['processed']) {
+    print ansiColor("blue") . "#  Scanned Videos: " . ansiColor("green") . $global['processed'] . "\n" . ansiColor();
   }
-  if ($stats['reEncoded']) {
-    print ansiColor("blue") . "#  Re-Encoded    : " . ansiColor("green") . $stats['reEncoded'] . "\n" . ansiColor();
+  if ($global['reEncoded']) {
+    print ansiColor("blue") . "#  Re-Encoded    : " . ansiColor("green") . $global['reEncoded'] . "\n" . ansiColor();
   }
-  if ($stats['byteSaved']) {
-    print ansiColor("blue") . "#  Space Saved   : " . ansiColor("green") . formatBytes($stats['byteSaved'], 0, true). "\n" . ansiColor();
+  if ($global['byteSaved']) {
+    print ansiColor("blue") . "#  Space Saved   : " . ansiColor("green") . formatBytes($global['byteSaved'], 0, true). "\n" . ansiColor();
   }
-  $totaltime = (time() - $stats['starttime']);
+  $totaltime = (time() - $global['starttime']);
   print ansiColor("blue") . "#  Total Time    : " . ansiColor("green") . seconds_toTime("$totaltime") . "\n" . ansiColor();
   print charTimes(80, "#", "blue") . "\n";
 }
