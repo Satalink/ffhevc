@@ -237,7 +237,7 @@ function getDefaultOptions($args, $location_config)
   $options['args']['group']                = !empty($args['group']) ? $args['group'] : false;
   $options['args']['rename']               = !empty($args['rename']) ?: 0;
   $options['args']['language']             = !empty($args['language']) ? $args['language'] : null;
-  $options['args']['stats_period']         = "1";  // ffmpeg stats reporting frequency in seconds
+  $options['args']['stats_period']         = "0.5";  // ffmpeg stats reporting frequency in seconds
   $options['args']['cooldown']             = !empty($args['cooldown']) ? $args['cooldown'] : 0;
 
   //Operational args (if detected is_enabled :: no value to pass)

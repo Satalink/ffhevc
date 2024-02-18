@@ -129,7 +129,7 @@ function processItem($dir, $item, $options, $args, $global)
     $options['args']['map'] . " " .
     $options['args']['meta'] . " " .
     "-stats " .
-    "-stats_period 2 " .
+    "-stats_period " . $options['args']['stats_period'] . " " .
     "-y \"" . $file['filename'] . ".hevc\"";
   if ($options['args']['verbose']) {
     print "\n\n" . ansiColor("green") . "$cmdln\n\n" . ansiColor();
