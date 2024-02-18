@@ -135,8 +135,10 @@ function processItem($dir, $item, $options, $args, $global)
     print "\n\n" . ansiColor("green") . "$cmdln\n\n" . ansiColor();
   }
   if (!$options['args']['test'] && !isStopped($options)) {
-    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("green") . $file['basename'] . ansiColor("yellow") . "\n";
-    $rts = preg_match('/copy/', $options['info']['video']) ? 11 : 38;
+    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("yellow") . $file['basename'] . ansiColor("yellow") . "\n";
+    if (isset($options['info'])) {
+      $rts = preg_match('/copy/', $options['info']['video']) ? 11 : 38;
+    }
     print charTimes($rts, " ") . "run time=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
     exec("$cmdln", $output, $status);
     if ($status == 255) {
@@ -204,7 +206,7 @@ function processItem($dir, $item, $options, $args, $global)
       touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
     }
     if (isset($info) && isset($inforig)) {
-      print ansiColor("blue") . "SIZE-STAT: " . ansiColor("magenta") . $file['basename'] . ansiColor("blue") . " ( " .
+      print ansiColor("blue") . "SIZE-STAT: " . ansiColor("green") . $file['basename'] . ansiColor("blue") . " ( " .
         "[orig] " . ansiColor("red") . formatBytes($inforig['format']['size'], 2, true) . ansiColor("blue") . " - " .
         "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " .
         "[diff] " . ansiColor("green") . formatBytes(($inforig['format']['size'] - $info['format']['size']), 2, true) . ansiColor("blue") . " " .

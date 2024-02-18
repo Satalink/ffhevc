@@ -12,6 +12,7 @@ function mkvmergeItem($file, $fileorig, $options, $info)
   if (!isset($fileorig)) $fileorig =[];
   if (`which mkvmerge 2> /dev/null` && !$options['args']['nomkvmerge'] && !isStopped($options) && !$options['args']['test']) {
     if (!$info['format']['mkvmerged'] && !$info['format']['exclude'] && !$options['args']['exclude']) {
+      print ansiColor("blue") . "Preprocessing: " . ansiColor("red") . $file['basename'] . "\n" . ansiColor();
       $mkvm_ext = ".mkv.merge";
       $cmdln    = "mkvmerge";
       if (!empty($options['args']['language'])) {

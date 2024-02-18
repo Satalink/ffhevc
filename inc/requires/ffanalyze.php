@@ -237,9 +237,11 @@ function ffanalyze($file, $info, $options, $quiet = false)
   }
 
   if (!$quiet) {
-    if (isset($options['info']['video']) && !isset($options['info']['audio']) && !$options['args']['exclude']) {
+    if (isset($options['info']['video']) && preg_match('/copy/i', $options['info']['video']) &&
+       !isset($options['info']['audio']) && !$options['args']['exclude']) {
       print $options['info']['video'];
-    } elseif (isset($options['info']['audio']) && !isset($options['info']['video']) && !$options['args']['exclude']) {
+    } elseif (isset($options['info']['audio']) && preg_match('/copy/i', $options['info']['audio']) &&
+       !isset($options['info']['video']) && !$options['args']['exclude']) {
       print $options['info']['audio'];
     }
   }
