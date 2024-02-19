@@ -46,7 +46,7 @@ function processItem($dir, $item, $options, $args, $global)
     !empty($info) && !$info['format']['exclude']
   ) {
     $tag_data = [array("name" => "exclude", "value" => "1")];
-    $status   = setMediaFormatTag($file, $tag_data);
+    $status   = setMediaFormatTag($file, $tag_data, $options);
     if (!$status) {
       ffprobe($file, $options, true);
     }
@@ -271,7 +271,7 @@ function processItem($dir, $item, $options, $args, $global)
         }
       }
       if ($file['extension'] == "mkv") {
-        $status = setMediaFormatTag($file, $tag_data);
+        $status = setMediaFormatTag($file, $tag_data, $options);
         if (!$status) {
           ffprobe($file, $options, true);
         }
