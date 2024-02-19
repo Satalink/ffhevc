@@ -8,9 +8,8 @@ function mkvmergeItem($file, $fileorig, $options, $info)
 {
   //Preprocess with mkvmerge (if in path)
   $mkvm_ext = ".mkv.merge";
-  if (empty($file) || empty($options) || empty($info))
-    if (file_exists($file['filename'] . $mkvm_ext)) unlink ($file['filename'] . $mkvm_ext); // leftover detected
-    return (array([], [], []));
+  if (empty($file) || empty($options) || empty($info)) return (array([], [], []));
+  if (file_exists($file['filename'] . $mkvm_ext)) unlink ($file['filename'] . $mkvm_ext); // leftover detected
   if (!isset($fileorig)) $fileorig =[];
   if (`which mkvmerge 2> /dev/null` && !$options['args']['nomkvmerge'] && !isStopped($options) && !$options['args']['test']) {
     if (!$info['format']['mkvmerged'] && !$info['format']['exclude'] && !$options['args']['exclude']) {

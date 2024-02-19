@@ -56,17 +56,19 @@ function ffprobe($file, $options, $quiet = false)
   $info['audio']                 = [];
   $info['subtitle']              = [];
 
-  foreach ($xml->format->tags->tag as $tag) {
-    $tag_key = strtolower(getXmlAttribute($tag, "key"));
-    $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
-    if (preg_match('/^exclude$/', $tag_key)) {
-      $options['tags']['ftags'][] = $info['format']['exclude'] = $tag_val;
-    } elseif (preg_match('/^mkvmerged$/', $tag_key)) {
-      $options['tags']['ftags'][] = $info['format']['mkvmerged'] = $tag_val;
-    } elseif (preg_match('/audioboost/', $tag_key)) {
-      $options['tags']['ftags'][] = $info['format']['audioboost'] = "$tag_val";
+  if(isset($xml->format->tags)) {
+    foreach ($xml->format->tags->tag as $tag) {
+      $tag_key = strtolower(getXmlAttribute($tag, "key"));
+      $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
+      if (preg_match('/^exclude$/', $tag_key)) {
+        $options['tags']['ftags'][] = $info['format']['exclude'] = $tag_val;
+      } elseif (preg_match('/^mkvmerged$/', $tag_key)) {
+        $options['tags']['ftags'][] = $info['format']['mkvmerged'] = $tag_val;
+      } elseif (preg_match('/audioboost/', $tag_key)) {
+        $options['tags']['ftags'][] = $info['format']['audioboost'] = "$tag_val";
+      }
+      $ftags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
     }
-    $ftags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'$tag_val'" : $tag_val;
   }
 
   if (isset($xml->streams->stream)) {
