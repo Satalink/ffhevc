@@ -96,6 +96,7 @@ function getCommandLineOptions($options, $args)
     --override      :flag:        reencode and override existing files (redo all existing regardless)
     --exclude       :flag:        exclude from being processed (ignore this video), stored in .xml
     --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
+    --rename        :flag:        enable renaming to Plex Standards
     --keeporiginal  :flag:        keep the original file and save as filename.orig.ext
     --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language\n\n" .
 
@@ -146,6 +147,10 @@ function getCommandLineOptions($options, $args)
   }
   if (array_key_exists("keeporiginal", $cmd_ln_opts)) {
     $options['args']['keeporiginal'] = true;
+  }
+  if (array_key_exists("rename", $cmd_ln_opts)) {
+    $options['args']['rename'] = true;
+    
   }
   if (array_key_exists("language", $cmd_ln_opts)) {
     $options['args']['language'] = substr($cmd_ln_opts['language'], 0, 3);
@@ -275,6 +280,7 @@ function getDefaultOptions($args, $location_config)
     "keys",
     "nomkvmerge",
     "override",
+    "rename",
     "permissions",
     "test",
     "verbose",
