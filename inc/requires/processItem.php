@@ -13,8 +13,7 @@ function processItem($dir, $item, $options, $args, $global)
   // Exclusions
   if (
     isStopped($options) || !isset($file['extension']) ||
-    !in_array(strtolower($file['extension']), $options['args']['extensions']) ||
-    preg_match('/.orig.mkv/', $file['basename'])  // file to be processed should never be orig
+    !in_array(strtolower($file['extension']), $options['args']['extensions'])
   ) {
     return ($global);
   }
@@ -32,9 +31,13 @@ function processItem($dir, $item, $options, $args, $global)
     }
   }
 
-  // Load Media File
   $curdir = getcwd();
   chdir($file['dirname']);
+
+  // Scna and clean leftover files from pervious aborted process
+  if (cleanup($file)) return($global);
+
+  // Load Media File
   $file                 = remove_illegal_chars($file, $options);
   list($file, $info)    = ffprobe($file, $options, false);
   list($options, $info) = ffanalyze($file, $info, $options, false);
