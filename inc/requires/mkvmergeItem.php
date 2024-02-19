@@ -63,8 +63,7 @@ function mkvmergeItem($file, $fileorig, $options, $info)
         }
         rename($file['filename'] . $mkvm_ext, $file['basename']);
         $file     = pathinfo($file['basename']);
-        $tag_data = [array("name" => "mkvmerged", "value" => "1")];
-        $status   = setMediaFormatTag($file, $tag_data);
+        setXmlFormatAttribute($file, 'mkvmerged', true);
         $options['args']['mkvmerged'] = true;
       }
     }

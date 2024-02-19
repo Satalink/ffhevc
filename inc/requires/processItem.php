@@ -46,6 +46,9 @@ function processItem($dir, $item, $options, $args, $global)
   ) {
     $tag_data = [array("name" => "exclude", "value" => "1")];
     $status   = setMediaFormatTag($file, $tag_data);
+    if (!$status) {
+      ffprobe($file, $options, true);
+    }
     return ($global);
   }
 
@@ -136,7 +139,7 @@ function processItem($dir, $item, $options, $args, $global)
   }
   if (!$options['args']['test'] && !isStopped($options)) {
     print ansiColor("blue") . "HEVC Encoding: " . ansiColor("yellow") . $file['basename'] . ansiColor("yellow") . "\n";
-    if (isset($options['info'])) {
+    if (isset($options['info']['video'])) {
       $rts = preg_match('/copy/', $options['info']['video']) ? 11 : 38;
     } else {
       $rts = 38;
@@ -258,9 +261,11 @@ function processItem($dir, $item, $options, $args, $global)
         }
       }
       if ($file['extension'] == "mkv") {
-        setMediaFormatTag($file, $tag_data);
+        $status = setMediaFormatTag($file, $tag_data);
+        if (!$status) {
+          ffprobe($file, $options, true);
+        }
       }
-      ffprobe($file, $options, true);
     }
   }
 

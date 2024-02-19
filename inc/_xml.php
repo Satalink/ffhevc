@@ -56,19 +56,6 @@ function setXmlFormatTag($file, $key, $value, $options, $info = [])
   }
 }
 
-function formatXML($xml)
-{
-  $module = "xml";
-  if (moduleCheck($module)) {
-    $dom                     = new DOMDocument($xml);
-    $dom->preserveWhiteSpace = true;
-    $dom->formatOutput       = true;
-    $xml                     = $dom->saveXML();
-  }
-  return ($xml);
-}
-
-
 function setXmlFormatAttribute($file, $attribute, $value = true)
 {
   $xml_file = "." . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml";
@@ -95,14 +82,24 @@ function setMediaFormatTag($file, $data)
 
   $output = null;
   if (`which mkvpropedit 2> /dev/null`) {
-    if (file_exists($xml_file)) {
+    if (file_exists($xml_file) && file_exists($file['basename'])) {
+      print ansiColor("yellow") . "Setting media exlusion tag...\r" . ansiColor();
       $cmdln = "mkvpropedit '" . $file['basename'] . "' --tags global:'" . $xml_file . "'";
+      chdir($file['dirname']);
       exec("$cmdln", $output, $status);
-      if (!$status && file_exists($xml_file))
+      if (!$status && file_exists($xml_file)) {
         unlink($xml_file);
+      } else {
+        setXmlFormatAttribute($file, "exclude", true);
+        unlink($xml_file);
+      }
+    } else {
+      print ansiColor("red") . "Unable to set media exclusion tag on " . $file['basename'] . "\n";
+      print "From (dir): " . getcwd() . "\n" . ansiColor();
     }
   } else {
-    print ansiColor("red") . "`mkvpropedit` not found in \$PATH\nUnable to set exclude tag in " . $file['basename'] . "\n" . ansiColor();
+    print ansiColor("red") . "`mkvpropedit` not found in \$PATH\nUnable to embed exclude tag in " . $file['basename'] . "\n" . ansiColor();
+    setXmlFormatAttribute($file, "exclude", true);
   }
   return ($status);
 }

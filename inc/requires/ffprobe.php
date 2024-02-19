@@ -49,8 +49,8 @@ function ffprobe($file, $options, $quiet = false)
   $info['format']['bitrate']     = getXmlAttribute($xml->format, "bit_rate") ? getXmlAttribute($xml->format, "bit_rate") : getXmlAttribute($xml->format, "BPS");
   $info['format']['nb_streams']  = getXmlAttribute($xml->format, "nb_streams");
   $info['format']['probe_score'] = getXmlAttribute($xml->format, "probe_score");
-  $info['format']['exclude']     = false;
-  $info['format']['mkvmerged']   = false;
+  $info['format']['exclude']     = getXmlAttribute($xml->format, "exclude") ? getXmlAttribute($xml->format, "exclude") : false;
+  $info['format']['mkvmerged']   = getXmlAttribute($xml->format, "mkvmerged") ? getXmlAttribute($xml->format, "mkvmerged") : false;
   $info['format']['audioboost']  = false;
   $info['video']                 = [];
   $info['audio']                 = [];
@@ -224,7 +224,10 @@ function ffprobe($file, $options, $quiet = false)
         unlink($file['basename']);
        }  else {
         $tag_data = [array("name" => "exclude", "value" => "1")];
-        setMediaFormatTag($file, $tag_data);
+        $status = setMediaFormatTag($file, $tag_data);
+        if (!$status) {
+          ffprobe($file, $options, true);
+        }
         $info                       = array();
         $options['args']['exclude'] = true;
         return (array($file, $info));

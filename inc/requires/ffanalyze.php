@@ -54,10 +54,9 @@ function ffanalyze($file, $info, $options, $quiet = false)
       $options['args']['video'] = "-vcodec copy";
     }
 
-    if (!preg_match("/copy/i", $options['args']['video']) && !$options['args']['exclude']) {
+    if (!preg_match("/copy/i", $options['args']['video'])) {
       $pf_key = array_search($info['video']['pix_fmt'], $options['args']['pix_fmts']);
-
-      if (!$quiet && !$info['format']['exclude']) {
+      if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
       print ansiColor("blue") . "Video Inspection ->" . ansiColor() .
         $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
         $info['video']['pix_fmt'] . "~=" . $options['args']['pix_fmts'][$pf_key] . "," .
@@ -126,7 +125,9 @@ function ffanalyze($file, $info, $options, $quiet = false)
         " -metadata:s:v:0 bit_rate=" . $options['video']['vps'] .
         " -metadata:s:v:0 bps=" . $options['video']['bps'] .
         " -metadata:s:v:0 title= ";
-        $options['info']['video'] = ansiColor("blue") . "Video Inspection ->" . ansiColor("green") . "copy\n" . ansiColor();
+        if (!$options['args']['exclude'] && !$info['format']['exclude']) {
+          $options['info']['video'] = ansiColor("blue") . "Video Inspection ->" . ansiColor("green") . "copy\n" . ansiColor();
+        }
     }
     $options['args']['map'] .= "-map 0:v? ";
   }
@@ -176,7 +177,9 @@ function ffanalyze($file, $info, $options, $quiet = false)
         if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
           $options['args']['meta'] .= " -metadata:s:a:0 audioboost=" . $options['args']['audioboost'] . '"';
         }
+        if ((!$options['args']['exclude'] && !$info['format']['exclude'])) {
           $options['info']['audio'] = ansiColor("blue") . "Audio Inspection ->" . ansiColor("green") . "copy\n" . ansiColor();
+        }
       } else {
         if (is_numeric($info['audio']['bitrate'])) {
           $info['audio']['bps']     = (int) (filter_var($info['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
@@ -184,7 +187,7 @@ function ffanalyze($file, $info, $options, $quiet = false)
         } elseif (!empty($info['audio']['bitrate']) && is_integer($info['audio']['bitrate'])) {
           $info['audio']['bps'] = (int) (filter_var($info['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
         }
-        if (!$quiet && !$info['format']['exclude']) {
+        if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
           print ansiColor("blue") . "Audio Inspection ->" . ansiColor() .
             $info['audio']['codec_name'] . ":" . $options['audio']['codec'] . "," .
             $info['audio']['bitrate'] . "<=" . $options['audio']['bitrate'] . "," .
@@ -254,8 +257,7 @@ function ffanalyze($file, $info, $options, $quiet = false)
     (preg_match("/copy/i", $options['args']['video']) &&
       preg_match("/copy/i", $options['args']['audio']) &&
       $file['extension'] == $options['args']['extension']) &&
-    (!$options['args']['override'] &&
-      !$options['args']['exclude']) # gets excluded later -- options needs to exist
+    (!$options['args']['override'] && !$options['args']['exclude']) # gets excluded later -- options needs to exist
   ) {
     return (array($options, []));  # no re-encoding needed
   }
