@@ -47,13 +47,7 @@ function formatBytes($bytes, $precision, $kbyte)
 function stop($options, $time = null)
 {
   // the `register_shutdown_function` won't pass time for normal shutdown of end of script
-  if (
-    !file_exists($options['args']['stop']) ||
-    !filesize($options['args']['stop'])
-  ) {
-    touch($options['args']['stop']);
-  }
-  if (isset($time)) {
+  if (isset($time)) {  //CTRL-C interupt
     file_put_contents($options['args']['stop'], $time, FILE_APPEND);
   }
   return;
