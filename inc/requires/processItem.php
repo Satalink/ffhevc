@@ -24,10 +24,8 @@ function processItem($dir, $item, $options, $args, $global)
     $global['total_files'] = !empty($global['total_files']) ? $global['total_files'] : 1;
     $percent               = round((($global['processed'] / $global['total_files']) * 100), 0);
     if ($percent > 0) {
-      if ($percent != $global['percent']) {
-        $global['percent'] = $percent;
-        print "   (" . $global['processed'] . "/" . $global['total_files'] . ") " . $percent . " %\r";
-      }
+      $global['percent'] = $percent;
+      print "   (" . $global['processed'] . "/" . $global['total_files'] . ") " . $percent . " %\r";
     }
   }
 
@@ -122,6 +120,10 @@ function processItem($dir, $item, $options, $args, $global)
   }
 
   // ENCODE MEDIA
+
+  $file = rename_byCodecs($file, $options, $info);
+  $file = rename_PlexStandards($file, $options);
+ 
   $cmdln = "nice --adjustment=" . $args['priority'] . " ffmpeg " .
     "-hide_banner " .
     "-v " . $options['args']['loglev'] . " " .
@@ -209,8 +211,6 @@ function processItem($dir, $item, $options, $args, $global)
     }
     if (isset($file) && file_exists($file['basename'])) {
       set_fileattrs($file, $options);
-      $file = rename_byCodecs($file, $options, $info);
-      $file = rename_PlexStandards($file, $options);
       touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
     }
     if (isset($info) && isset($inforig)) {
