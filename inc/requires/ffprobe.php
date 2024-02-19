@@ -56,12 +56,7 @@ function ffprobe($file, $options, $quiet = false)
   $info['audio']                 = [];
   $info['subtitle']              = [];
 
-  $format_tags = $xml->format->tags;
-  if (!isset($format_tags->tag)) {
-    $format_tags->tag = [];
-  }
-
-  foreach ($format_tags->tag as $tag) {
+  foreach ($xml->format->tags->tag as $tag) {
     $tag_key = strtolower(getXmlAttribute($tag, "key"));
     $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
     if (preg_match('/^exclude$/', $tag_key)) {
