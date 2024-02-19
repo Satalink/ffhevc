@@ -59,14 +59,16 @@ function setXmlFormatTag($file, $key, $value, $options, $info = [])
 function setXmlFormatAttribute($file, $attribute, $value = true)
 {
   $xml_file = "." . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml";
+  $status = false;
   if (file_exists($xml_file)) {
     $xml = new SimpleXMLElement($xml_file, null, true);
-    $xml->format->addAttribute("$attribute", $value);
-    $xml->asXML($xml_file);
+    $xml->format->addAttribute("$attribute", "$value");
+    $status = $xml->asXML($xml_file);
   }
+  return($status);
 }
 
-function setMediaFormatTag($file, $data)
+function setMediaFormatTag($file, $data, $options)
 {
   $xml_file = "." . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $file['filename'] . "_tag-data.xml";
   $xml      = new SimpleXMLElement("<Tags></Tags>");
@@ -86,20 +88,21 @@ function setMediaFormatTag($file, $data)
       print ansiColor("yellow") . "Setting media exlusion tag...\r" . ansiColor();
       $cmdln = "mkvpropedit '" . $file['basename'] . "' --tags global:'" . $xml_file . "'";
       chdir($file['dirname']);
-      exec("$cmdln", $output, $status);
-      if (!$status && file_exists($xml_file)) {
-        unlink($xml_file);
-      } else {
-        setXmlFormatAttribute($file, "exclude", true);
-        unlink($xml_file);
+      if ($options['args']['verbose']) {
+        print ansiColor("green") . "$cmdln\n" . ansiColor();
       }
+      exec("$cmdln", $output, $status);
+      if (preg_match('/error/i', $output[0])) {
+        setXmlFormatAttribute($file, "exclude");
+      }
+      if (file_exists($xml_file)) unlink($xml_file);
     } else {
       print ansiColor("red") . "Unable to set media exclusion tag on " . $file['basename'] . "\n";
       print "From (dir): " . getcwd() . "\n" . ansiColor();
     }
   } else {
     print ansiColor("red") . "`mkvpropedit` not found in \$PATH\nUnable to embed exclude tag in " . $file['basename'] . "\n" . ansiColor();
-    setXmlFormatAttribute($file, "exclude", true);
+    setXmlFormatAttribute($file, "exclude");
   }
   return ($status);
 }
