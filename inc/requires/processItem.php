@@ -61,8 +61,10 @@ function processItem($dir, $item, $options, $args, $global)
 
   // PreProcess Item
   $fileorig = file_exists($file['filename'].".orig.".$file['extension']) ? pathinfo($file['filename'].".orig.".$file['extension']) : [];
+
   # Convert Item
   list($file, $fileorig, $options) = convertItem($file, $options, $info);
+
   # MKVmerge Item
   list($file, $fileorig, $options) = mkvmergeItem($file, $fileorig, $options, $info);
  
@@ -71,8 +73,7 @@ function processItem($dir, $item, $options, $args, $global)
     return ($global);
   if ($info['format']['exclude'] && !$options['args']['override'])
     return ($global);
-  if (empty($fileorig))
-    $fileorig = $file;  // no convert, no mkvmerge
+  if (empty($fileorig))  $fileorig = $file;  // convert and/or mkvmerge was not needed
 
   // Configure video options 
   if (!isset($options['args']['video'])) {
@@ -223,6 +224,12 @@ function processItem($dir, $item, $options, $args, $global)
     if (isset($fileorig) && file_exists($fileorig['basename']) && !$options['args']['keeporiginal']) {
       unlink($fileorig['basename']);
     }
+
+    if (file_exists($file['basename'])) {
+      $file = rename_byCodecs($file, $options, $info);
+      $file = rename_PlexStandards($file, $options);      
+    }
+
     print charTimes(80, "#", "blue") . "\n\n";
 
   } else {
