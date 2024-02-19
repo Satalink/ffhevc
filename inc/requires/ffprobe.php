@@ -221,7 +221,7 @@ function ffprobe($file, $options, $quiet = false)
         unlink($file['basename']);
        }  else {
         $tag_data = [array("name" => "exclude", "value" => "1")];
-        $status = setMediaFormatTag($file, $tag_data);
+        $status = setMediaFormatTag($file, $tag_data, $options);
         if (!$status) {
           ffprobe($file, $options, true);
         }
