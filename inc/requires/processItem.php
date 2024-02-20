@@ -144,7 +144,7 @@ function processItem($dir, $item, $options, $args, $global)
     print "\n\n" . ansiColor("green") . "$cmdln\n\n" . ansiColor();
   }
   if (!$options['args']['test'] && !isStopped($options)) {
-    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("yellow") . $file['basename'] . ansiColor("yellow") . "\n";
+    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("yellow") . $file['basename'] . ansiColor() . " (" . formatBytes(filesize($file['basename']), 2, true) . ")" . ansiColor("yellow") . "\n";
     if (isset($options['info']['video'])) {
       $rts = preg_match('/copy/', $options['info']['video']) ? 11 : 38;
     } else {

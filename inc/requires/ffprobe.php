@@ -189,7 +189,7 @@ function ffprobe($file, $options, $quiet = false)
     !$quiet
   ) {
     ffanalyze($file, $info, $options, true);
-    print ansiColor("blue") . "$action: " . ansiColor("green") . $file['basename'] . ansiColor("blue") . "\n";
+    print ansiColor("blue") . "$action: " . ansiColor("green") . $file['basename'] . ansiColor() . " (" . formatBytes(filesize($file['basename']), 2, true) . ")" . ansiColor("blue") . "\n";
     if (!empty($info['video']) && !empty($info['video']['bitrate'])) {
       charTimes(7, " ");
       print $info['video']['codec_type'] . ":" . $info['video']['codec'] . ", " . $info['video']['width'] . "x" . $info['video']['height'] . ", " . formatBytes($info['video']['bitrate'], 2, false) . "PS\n";
