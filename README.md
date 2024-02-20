@@ -78,10 +78,6 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
 
   If you supply a "key" (defined in conf/media_paths_keys.php), the path defined in that key will be scanned and processed using the settings defined for that key.
 
-  > $> ffhevc.php mov amov
-
-  You can supply multiple keys to process several defined media paths in one job.
-
 
 ### Plex Naming Standard <a name = "naming"></a>
 
