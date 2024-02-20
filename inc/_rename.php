@@ -135,7 +135,8 @@ function rename_byCodecs($file, $options, $info) {
   $resolutions = array('480p', '720p', '1080p', '2160p', ' SD', ' HD', ' UHD');
   $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265", "avc", "vc1", "hevc");
   $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
-  $profiles    = array('RAW-HD', 'Remux', 'BLURAY', 'WEBDL', 'WEBRIP', 'HDTV');  // Radarr Quality Profiles
+  $camelcase_words = array("bluray" => "Bluray", "webrip" => "WebRip", "redux" => "Redux", "webdl" => "WebDL", 'truehd' => "TrueHD");
+  $profiles    = array('RAW-HD', 'Remux', 'BLURAY', 'WEBDL', 'WEBRIP', 'HDTV');  // Quality Profiles
 
   $resolution  = get_resolution($info['video']['height']);
   $vcodec      = isset($info['video']['codec_name']) ? $info['video']['codec_name'] : $options['video']['codec_long_name'];
@@ -151,7 +152,11 @@ function rename_byCodecs($file, $options, $info) {
   if (!$filename_set) {
     foreach ($profiles as $pf) {
       if (preg_match("/$pf/i", $filename)) {
-        $filename = str_ireplace($pf, "$profile", "$filename");
+        if (array_key_exists($pf, $camelcase_words)) {        
+          $filename = str_ireplace($pf, $camelcase_words["$pf"], $filename);
+        } else {
+          $filename = str_ireplace($pf, "$profile", "$filename");
+        }
         break;
       }
     }
