@@ -83,12 +83,12 @@ If you have a movies, movie archive, tv shows, tv show archive setup, you can se
 
 ffhevc uses the Plex Naming Standard if the `rename` flag is set to true.
   
-#### Recommended Settings ()
+#### Recommend `darr Settings ()
   Radarr -> Settings -> Media Management: Standard Movie Format<br>
-  `{Movie CleanTitle} ({Release Year}) - [ {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
+  `{Movie CleanTitle} ({Release Year}) - [ {Quality Title} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
 
   Sonarr -> Settings -> Media Management: Standard Episode Format<br>
-  `{Series CleanTitle} - s{season:00}e{episode:00} ({Series Year}) - [ {ImdbId} {Quality Title} {MediaInfo VideoDynamicRangeType} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
+  `{Series CleanTitle} - s{season:00}e{episode:00} ({Series Year}) - [ {Quality Title} {MediaInfo VideoCodec} {MediaInfo AudioCodec} ]`
 
   -  ref [Plex Movie Naming Standard](https://support.plex.tv/articles/naming-and-organizing-your-movie-media-files/)<br>
   -  ref [Plex TV Show Naming Standard](https://support.plex.tv/articles/naming-and-organizing-your-tv-show-files/)<br>
