@@ -95,3 +95,25 @@ function is_between(int $min, int $max, int $val)
   }
   return false;
 }
+
+function search($keywords, $options) {
+  print ansiColor("blue") . "SEARCHING: " . ansiColor("yellow") . $keywords . "\n" . ansiColor();
+  foreach ($options['locations'] as $location) {
+    $output = [];
+    $path = explode('|',$location)[0];
+    if (file_exists("$path")) {
+      print ansiColor("blue") . "$path\r";
+      $cmdln = "find $path -not -name \"*.xml\" -iname \"*$keywords*\"";
+      if ($options['args']['verbose']) {
+        print ansiColor("green") . "$cmdln\n" . ansiColor();
+      }
+      exec("$cmdln", $output, $result);
+      if(!empty($output)) {
+        print ansiColor("green") . "\n";
+          print_r($output); 
+        print ansiColor();
+      }
+    }
+  }
+
+}

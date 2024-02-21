@@ -30,15 +30,32 @@ function processItem($dir, $item, $options, $args, $global)
   }
 
   $curdir = getcwd();
-  chdir($file['dirname']);
+  if (isset($file['dirname']) && file_exists($file['dirname'])) {
+    chdir($file['dirname']);
+  }
 
-  // Scna and clean leftover files from pervious aborted process
+  // Scan and clean leftover files from pervious aborted process
   if (cleanup($file)) return($global);
+  $quiet = ($options['args']['toolopt']) ? true : false; // --rename cmdline (super-true);
+
 
   // Load Media File
   $file                 = remove_illegal_chars($file, $options);
-  list($file, $info)    = ffprobe($file, $options, false);
-  list($options, $info) = ffanalyze($file, $info, $options, false);
+  list($file, $info)    = ffprobe($file, $options, $quiet);
+  list($options, $info) = ffanalyze($file, $info, $options, $quiet);
+
+  // Tools?
+  if ($options['args']['rename'] > 1) { 
+    rename_PlexStandards($file, $options);
+    $global['processed'] = 0;
+    return($global); 
+  } elseif (!empty($options['args']['search'])) {
+    $keywords = $options['args']['search'];
+    search("$keywords", $options);
+    $global['processed'] = 0;
+    return($global);
+  }
+
 
   // Set Exclude tag in media file (--exclude param given)
   if (

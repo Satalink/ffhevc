@@ -23,7 +23,7 @@ function get_CommandLineArgs($options, $argv, $args, $global)
         if (!$args['index']) {
           $args['index'] = $i;
           if ($args['index'] > 1) {
-            exit(ansiColor("red") . "\n  Invalid First Option: \"$arg $i\"\n" . ansiColor() . "  Type $>" . ansiColor("blue") . $args['application'] . " --help\n" . ansiColor());
+            exit(ansiColor("red") . "\n  Invalid first option: \"$arg $i\"\n" . ansiColor() . "  e.g. $>" . ansiColor("blue") . $args['application'] . " --help\n" . ansiColor());
           }
         }
       } elseif (preg_match('/^-/', $arg)) {
@@ -96,7 +96,6 @@ function getCommandLineOptions($options, $args)
     --override      :flag:        reencode and override existing files (redo all existing regardless)
     --exclude       :flag:        exclude from being processed (ignore this video), stored in .xml
     --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
-    --rename        :flag:        enable renaming to Plex Standards
     --keeporiginal  :flag:        keep the original file and save as filename.orig.ext
     --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language\n\n" .
 
@@ -114,8 +113,13 @@ function getCommandLineOptions($options, $args)
     --fps           :pass value:  set frames per second (23.97, 24, *29.97, 30, 60, 120, etc)
     --scale         :pass value:  set the the downsize resolution height. Aspect auto retained. (480, 720, 1080, *2160, 4320, etc) WILL NOT UPSCALE!
     --quality       :pass value:  set the quality factor (0.5 => low, 1.0 => normal, 2.0 => high) *default 1.29
-    --permissions   :pass value:  set the file permission" .
-    ansiColor();
+    --permissions   :pass value:  set the file permission\n\n" .
+
+    ansiColor("green") . "TOOLS " . 
+    ansiColor("blue") . "
+    --rename        :flag:        rename existing files to Plex Naming Standards (bypasses encoding, rename in settings renames encoded files)
+    --search        :pass value:  search for \"keyword(s)\" in your media_path_keys (e.g.  --search=\"Marvels\")
+    " . ansiColor();
 
 
   $cmd_ln_opts = getopt(null, $options['args']['cmdlnopts'], $args['index']);
@@ -149,8 +153,8 @@ function getCommandLineOptions($options, $args)
     $options['args']['keeporiginal'] = true;
   }
   if (array_key_exists("rename", $cmd_ln_opts)) {
-    $options['args']['rename'] = true;
-    
+    $options['args']['rename'] = 2;
+    $options['args']['toolopt'] = true;
   }
   if (array_key_exists("language", $cmd_ln_opts)) {
     $options['args']['language'] = substr($cmd_ln_opts['language'], 0, 3);
@@ -191,7 +195,15 @@ function getCommandLineOptions($options, $args)
   if (array_key_exists("scale", $cmd_ln_opts)) {
     $options['video']['scale'] = $cmd_ln_opts['scale'];
     if (empty($cmd_ln_opts['scale'])) {
-      print "usage: option --scale=[value]\n";
+      print "usage: --scale=[value]\n";
+      exit;
+    }
+  }
+  if (array_key_exists("search", $cmd_ln_opts)) {
+    $options['args']['search'] = $cmd_ln_opts['search'];
+    $options['args']['toolopt'] = true;    
+    if (empty($cmd_ln_opts['search'])) {
+      print "usage: --search=[keyword(s)]\n";
       exit;
     }
   }
@@ -263,6 +275,7 @@ function getDefaultOptions($args, $location_config)
   $options['args']['loglev']            = "quiet";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
   $options['args']['threads']           = 0;
   $options['args']['stop']              = isset($args['stop']) ? $args['stop'] : "/tmp/hevc.stop";
+  $options['args']['toolopt']           = false;
   $options['args']['remove_stale_stop'] = isset($args['remove_stale_stop']) ? $args['remove_stale_stop'] : false;
   $options['args']['pix_fmts']          = array(//acceptable pix_fmts
     "yuv420p",
@@ -294,6 +307,7 @@ function getDefaultOptions($args, $location_config)
     "pix_fmt::",
     "quality::",
     "scale::",
+    "search::",
     "vbr::",
     "vmax::",
     "vmin::",

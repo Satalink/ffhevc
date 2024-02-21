@@ -121,7 +121,7 @@ function rename_PlexStandards($file, $options) {
       if ($file['filename'] !== "$titlename") {
         rename($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $file['dirname'] . DIRECTORY_SEPARATOR . "$titlename" . "." . $file['extension']);
         $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $titlename . "." . $file['extension']);
-        chgrp($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['group']);
+        chgrp($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['group']);
         chmod($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['permissions']);
       }
     }
