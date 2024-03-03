@@ -40,6 +40,7 @@ function get_CommandLineArgs($options, $argv, $args, $global)
       $options = getLocationOptions($options, $args, $file['dirname']);
       isStopped($options, true);
       $global  = processItem($file['dirname'], $file['basename'], $options, $args, $global);
+      cleanXMLDir($file['dirname'], $options, true);
       showStats($global);
       exit;
     }
@@ -106,7 +107,7 @@ function getCommandLineOptions($options, $args)
     --acodec        :pass value:  set audio codec manually.  (*aac, ac3, libopus, mp3, etc... | none)
     --achannels     :pass value:  set audio channels manually.  (1, 2, *6, 8) 1=mono, 2=stereo, *6=5.1, 8=7.1
     --asamplerate   :pass value:  set audio sample rate manually. (8000, 12000, 16000, 24000, 32000, 44000, *48000)
-    --audioboost    :pass value:  set the dB boost level (1dB, 5dB, 10dB, 15dB.. etc) // must end with 'dB'
+    --audioboost    :pass value:  set the dB boost level (1dB, 5dB, 10dB, 15dB.. etc) // must end with 'dB' || 0 to disable
     --pix_fmt       :pass value:  set video codec pix_fmt (*yuv420p, yuv420p10, yuv420p10le, yuv422p, yuv444p)
     --vmin          :pass value:  set variable quality min (*1-33)
     --vmax          :pass value:  set variable quality max (1-*33)
@@ -178,7 +179,7 @@ function getCommandLineOptions($options, $args)
     $options['audio']['sample_rate'] = $cmd_ln_opts['asamplerate'];
   }
   if (array_key_exists("audioboost", $cmd_ln_opts)) {
-    $options['args']['audioboost'] = preg_match('/^\d{1,2}dB$/', $cmd_ln_opts['audioboost']) ? $cmd_ln_opts['audioboost'] : "";
+    $options['args']['audioboost'] = !empty($cmd_ln_opts['audioboost']) ? $cmd_ln_opts['audioboost'] : false;
   }
   if (array_key_exists("quality", $cmd_ln_opts)) {
     $options['video']['quality_factor'] = $cmd_ln_opts['quality'];
@@ -246,7 +247,7 @@ function getDefaultOptions($args, $location_config)
   $options['audio']['channels']    = !empty($args['audio_channels']) ? $args['audio_channels'] : 6;
   $options['audio']['bitrate']     = !empty($args['audio_bitrate']) ? $args['audio_bitrate'] : "720k";
   $options['audio']['sample_rate'] = !empty($args['audio_sample_rate']) ? $args['audio_sample_rate'] : 48000;
-  $options['args']['audioboost']           = !empty($args['audio_boost']) ? $args['audio_boost'] : "";
+  $options['args']['audioboost']           = !empty($args['audio_boost']) ? $args['audio_boost'] : false;
   $options['args']['extension']            = !empty($args['extension']) ? $args['extension'] : "mkv";
   $options['args']['extensions']           = array("mkv", "mp4", "mpeg", "m4v", "ts", "m2ts", "avi", "av1", "3gp", "flv", "fv4", "ogv", "webm", "wmv", "mov", "vob");  // acceptable formats to convert/encode
   $options['args']['maxmuxqueuesize']      = !empty($args['maxmuxqueuesize']) ?$args['maxmuxqueuesize'] : 8192;
@@ -301,6 +302,7 @@ function getDefaultOptions($args, $location_config)
     "achannels::",
     "acodec::",
     "asamplerate::",
+    "audioboost::",
     "filterforeign",
     "fps::",
     "language::",

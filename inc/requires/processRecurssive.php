@@ -34,11 +34,12 @@ function processRecursive($dir, $options, $args, $global)
 
     if (is_dir($dir . DIRECTORY_SEPARATOR . $item)) {
       if (!preg_match("/_UNPACK_|_TEST_/", $item)) {
+        cleanXMLDir($dir, $options, true);
         $global = processRecursive($dir . DIRECTORY_SEPARATOR . $item, $options, $args, $global);
-        cleanXMLDir($dir, $options);
       }
     } else {
       $global = processItem($dir, $item, $options, $args, $global);
+      cleanXMLDir($dir, $options, true);
     }
   }
   return ($global);
