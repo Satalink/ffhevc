@@ -223,6 +223,7 @@ function processItem($dir, $item, $options, $args, $global)
         }
       }
     }
+debug($fileorig);
     if (isset($fileorig) && isset($global['byteSaved']) && isset($global['reEncoded'])) {
       $global['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
       $global['reEncoded']++;
