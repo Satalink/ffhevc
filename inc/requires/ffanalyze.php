@@ -175,7 +175,7 @@ function ffanalyze($file, $info, $options, $quiet = false)
           " -metadata:s:a:0 bps=" . $info['audio']['bps'] .
           " -metadata:s:a:0 title= ";
         if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
-          $options['args']['meta'] .= " -metadata:s:a:0 audioboost=" . $options['args']['audioboost'] . '"';
+          $options['args']['meta'] .= " -metadata:s:a:0 audioboost='" . $options['args']['audioboost'] . "'";
         }
         if ((!$options['args']['exclude'] && !$info['format']['exclude'])) {
           $options['info']['audio'] = ansiColor("blue") . "Audio Inspection ->" . ansiColor("green") . "copy\n" . ansiColor();
