@@ -207,7 +207,7 @@ function processItem($dir, $item, $options, $args, $global)
   if (
     isset($inforig['format']['size']) &&
     isset($info['format']['size']) &&
-    (int) ($inforig['format']['size']) <= ((int) $info['format']['size'])
+    (int) ($inforig['format']['size']) < ((int) $info['format']['size'])
   ) {
     $reasons[] = "original filesize is smaller by ( " . formatBytes($info['format']['size'] - filesize($fileorig['basename']), 0, false) . " )";
   }
@@ -223,7 +223,6 @@ function processItem($dir, $item, $options, $args, $global)
         }
       }
     }
-debug($fileorig);
     if (isset($fileorig) && isset($global['byteSaved']) && isset($global['reEncoded'])) {
       $global['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
       $global['reEncoded']++;
