@@ -9,6 +9,7 @@ function processRecursive($dir, $options, $args, $global)
 {
   // Get Total Files to Process (once)
   if (!isset($global['total_files'])) {
+    print "scanning..\r";
     $cmdln = "find '" . $dir . "' -not -path '*_UNPACK_*' -not -path '*_TEST_*'";
     $i     = 0;
     foreach ($options['args']['extensions'] as $ext) {
