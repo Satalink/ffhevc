@@ -238,9 +238,9 @@ function processItem($dir, $item, $options, $args, $global)
         "[diff] " . ansiColor("green") . formatBytes(($inforig['format']['size'] - $info['format']['size']), 2, true) . ansiColor("blue") . " " .
         ")\n" . ansiColor();
     }
-    // if (isset($fileorig) && file_exists($fileorig['basename']) && !$options['args']['keeporiginal']) {
-    //   unlink($fileorig['basename']);
-    // }
+    if (isset($fileorig) && file_exists($fileorig['basename']) && preg_match('/\.orig\./', $fileorig['basename'])  && !$options['args']['keeporiginal']) {
+      unlink($fileorig['basename']);
+    }
 
     if (file_exists($file['basename'])) {
       $file = rename_byCodecs($file, $options, $info);
