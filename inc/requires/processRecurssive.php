@@ -23,6 +23,7 @@ function processRecursive($dir, $options, $args, $global)
     $global['total_files'] = (int) $tf[0];
   }
 
+  if (!file_exists("$dir")) return($global);
   $list = array_slice(scandir("$dir"), 2);
   foreach ($list as $index => $item) {
     if (file_exists($options['args']['stop'])) {

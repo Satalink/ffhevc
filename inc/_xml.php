@@ -5,9 +5,10 @@
 
 function cleanXMLDir($dir, $options, $quiet = false)
 {
+  if (!file_exists("$dir")) return;
   // clean xml for nonexist media
   chdir($dir);
-  if (is_dir("./.xml")) {
+  if (file_exists("./.xml") && is_dir("./.xml")) {
     if ($dh = opendir("./.xml")) {
       while (($xmlfile = readdir($dh)) !== false) {
         if (is_dir($xmlfile)) {

@@ -123,6 +123,11 @@ function rename_PlexStandards($file, $options) {
         $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $titlename . "." . $file['extension']);
         chgrp($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['group']);
         chmod($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $options['args']['permissions']);
+        //Fix Windows CaseInsensitive filenaming issue (force delete xml on rename)
+        $xml_file  = $file['dirname'] . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml";
+        if (file_exists($xml_file)) {
+          unlink($xml_file);
+        }
       }
     }
   }
@@ -181,6 +186,12 @@ function rename_byCodecs($file, $options, $info) {
   }
   rename($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $file['dirname'] . DIRECTORY_SEPARATOR . $filename . "." . $file['extension']);
   $file = pathinfo($file['dirname'] . DIRECTORY_SEPARATOR . $filename . "." . $file['extension']);
+  //Fix Windows CaseInsensitive filenaming issue (force delete xml on rename)
+  $xml_file  = $file['dirname'] . DIRECTORY_SEPARATOR . ".xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml";
+  if (file_exists($xml_file)) {
+    unlink($xml_file);
+  }
+  cleanXMLDir($file['dirname'], $options, true);
   return($file);
 }
 

@@ -34,8 +34,9 @@ function ffprobe($file, $options, $quiet = false)
     $xml          = simplexml_load_file("$xml_file");
     $xml_filesize = getXmlAttribute($xml->format, "size") ? getXmlAttribute($xml->format, "size") : 0;
   }
-  if (!isset($xml) || empty($xml) || (file_exists($file['basename']) && (int) $xml_filesize != filesize($file['basename']))) {
-    if (!$quiet) print "Stale xml detected.  Initiating new probe...\n";
+  if (!isset($xml) || empty($xml) || (file_exists($file['basename']) && (int) $xml_filesize != filesize($file['basename'])) && !isset($options['stale-detected'])) {
+    if (!$quiet) print "Stale xml detected for " . $file['basename'] . " Initiating new probe...\n";
+    $options['stale-detected'] = true;
     unlink("$xml_file");
     list($file, $info) = ffprobe($file, $options, $quiet);
     list($options, $info) = ffanalyze($file, $info, $options, false);
@@ -120,14 +121,14 @@ function ffprobe($file, $options, $quiet = false)
         case "audio":
           if (empty($info['audio'])) {
             $atags                        = array();
-            $info['audio']['index']       = getXmlAttribute($stream, "index") ? getXmlAttribute($stream, "index") : "";
-            $info['audio']['title']       = getXmlAttribute($stream, "title") ? getXmlAttribute($stream, "title") : "";
-            $info['audio']['codec_type']  = getXmlAttribute($stream, "codec_type") ? getXmlAttribute($stream, "codec_type") : "";
-            $info['audio']['codec_name']  = getXmlAttribute($stream, "codec_name") ? getXmlAttribute($stream, "codec_name") : "";
-            $info['audio']['channels']    = getXmlAttribute($stream, "channels") ? getXmlAttribute($stream, "channels") : "";
-            $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate") ? getXmlAttribute($stream, "sample_rate") : "";
-            $info['audio']['bitrate']     = getXmlAttribute($stream, "bit_rate") ? getXmlAttribute($stream, "bit_rate") : "";
-            $info['audio']['audioboost']  = !empty($info['format']['audioboost']) ? $info['format']['audioboost'] : "";
+            $info['audio']['index']       = 
+            $info['audio']['title']       = 
+            $info['audio']['codec_type']  = 
+            $info['audio']['codec_name']  = 
+            $info['audio']['channels']    = 
+            $info['audio']['sample_rate'] = 
+            $info['audio']['bitrate']     = 
+            $info['audio']['audioboost']  = "";
 
             if (!isset($stream->tags->tag)) {
               $stream->tags->tag = null;
@@ -136,24 +137,25 @@ function ffprobe($file, $options, $quiet = false)
               $tag_key = strtolower(getXmlAttribute($tag, "key"));
               $tag_val = strtolower(preg_replace('/\(|\)|\'/', '', getXmlAttribute($tag, "value")));
               if ($tag_key == "language") {
-                if (preg_match('/$tag_val/', $options['args']['language'])) {
+                $language = $options['args']['language'];
+                if (preg_match("/$language/i", $tag_val)) {                  
+                  $info['audio']['index']       = getXmlAttribute($stream, "index") ? getXmlAttribute($stream, "index") : "";
+                  $info['audio']['title']       = getXmlAttribute($stream, "title") ? getXmlAttribute($stream, "title") : "";
+                  $info['audio']['codec_type']  = getXmlAttribute($stream, "codec_type") ? getXmlAttribute($stream, "codec_type") : "";
+                  $info['audio']['codec_name']  = getXmlAttribute($stream, "codec_name") ? getXmlAttribute($stream, "codec_name") : "";
+                  $info['audio']['channels']    = getXmlAttribute($stream, "channels") ? getXmlAttribute($stream, "channels") : "";
+                  $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate") ? getXmlAttribute($stream, "sample_rate") : "";
+                  $info['audio']['bitrate']     = getXmlAttribute($stream, "bit_rate") ? getXmlAttribute($stream, "bit_rate") : "";
+                  $info['audio']['audioboost']  = !empty($info['format']['audioboost']) ? $info['format']['audioboost'] : "";
                   $info['audio']['language'] = $tag_val;
+                }
+                else {
                   continue;
                 }
-                // else {
-                //   if ($options['args']['filter_foreign']) {
-                //     $info['audio'] = array();
-                //     break;
-                //   }
-                //   else {
-                //     $info['audio']['language'] = $tag_val;
-                //   }
-                // }
               }
               if (preg_match('/^bps$/i', $tag_key)) {
                 if (empty($info['audio']['bitrate'])) {
                   $info['audio']['bitrate'] = $tag_val;
-                  continue;
                 }
               } elseif (preg_match('/bit*rate$/i', $tag_key)) {
                 if (empty($info['audio']['bitrate'])) {
@@ -163,7 +165,6 @@ function ffprobe($file, $options, $quiet = false)
                     $info['audio']['bitrate'] = (int) "$tag_val";
                   }
                 }
-                continue;
               }
               $atags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'" . $tag_val . "'" : $tag_val;
             }
@@ -204,7 +205,7 @@ function ffprobe($file, $options, $quiet = false)
     }
     print ansiColor() . "\n";
   } elseif (
-    (!empty($info) && empty($info['video']) || empty($info['audio'])) && !$options['args']['test']
+    (!empty($info) && (empty($info['video']) || empty($info['audio']))) && !$options['args']['test']
   ) {
     $missing = null;
     if ($file['extension'] == $options['args']['extension']) {
@@ -212,7 +213,7 @@ function ffprobe($file, $options, $quiet = false)
         $missing = "video";
       if (empty($info['audio']))
         $missing .= ' audio';
-      print ansiColor("red") . "NO EXISTING: " . strtoupper($options['args']['language']) . " TRACK(s) (possibly foreign language filtered)\n" . ansiColor();
+      print ansiColor("red") . "NO EXISTING: " . ansiColor("green") . strtoupper($options['args']['language']) . ansiColor("red") . " TRACK(s) detected\n" . ansiColor();
       if (!$options['args']['ignore_delete_prompt']) {
         print "Delete " . ansiColor("green") . $file['basename'] . ansiColor() . "?  [y/N] >";
         $del_response = trim(fgets(STDIN));
