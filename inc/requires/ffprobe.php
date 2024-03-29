@@ -120,16 +120,14 @@ function ffprobe($file, $options, $quiet = false)
           break;
         case "audio":
           if (empty($info['audio'])) {
-            $atags                        = array();
-            $info['audio']['index']       = 
-            $info['audio']['title']       = 
-            $info['audio']['codec_type']  = 
-            $info['audio']['codec_name']  = 
-            $info['audio']['channels']    = 
-            $info['audio']['sample_rate'] = 
-            $info['audio']['bitrate']     = 
-            $info['audio']['audioboost']  = "";
-
+            $info['audio']['index']       = getXmlAttribute($stream, "index") ? getXmlAttribute($stream, "index") : "";
+            $info['audio']['title']       = getXmlAttribute($stream, "title") ? getXmlAttribute($stream, "title") : "";
+            $info['audio']['codec_type']  = getXmlAttribute($stream, "codec_type") ? getXmlAttribute($stream, "codec_type") : "";
+            $info['audio']['codec_name']  = getXmlAttribute($stream, "codec_name") ? getXmlAttribute($stream, "codec_name") : "";
+            $info['audio']['channels']    = getXmlAttribute($stream, "channels") ? getXmlAttribute($stream, "channels") : "";
+            $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate") ? getXmlAttribute($stream, "sample_rate") : "";
+            $info['audio']['bitrate']     = getXmlAttribute($stream, "bit_rate") ? getXmlAttribute($stream, "bit_rate") : "";
+            $info['audio']['audioboost']  = !empty($info['format']['audioboost']) ? $info['format']['audioboost'] : "";            
             if (!isset($stream->tags->tag)) {
               $stream->tags->tag = null;
             }

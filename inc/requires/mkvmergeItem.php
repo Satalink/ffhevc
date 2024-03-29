@@ -12,7 +12,7 @@ function mkvmergeItem($file, $fileorig, $options, $info)
   if (file_exists($file['filename'] . $mkvm_ext)) unlink ($file['filename'] . $mkvm_ext); // leftover detected
   if (!isset($fileorig)) $fileorig =[];
   if (`which mkvmerge 2> /dev/null` && !$options['args']['nomkvmerge'] && !isStopped($options)) {
-    if (!$info['format']['mkvmerged'] && !$info['format']['exclude'] && !$options['args']['exclude']) {
+    if ((!$info['format']['mkvmerged'] && !$info['format']['exclude'] && !$options['args']['exclude']) || $options['args']['override']) {
       print ansiColor("blue") . "Preprocessing: " . ansiColor("red") . $file['basename'] . ansiColor() . " (" . formatBytes(filesize($file['basename']), 2, true) . ")\n" . ansiColor();
       $cmdln    = "mkvmerge";
       if (!empty($options['args']['language'])) {
@@ -31,6 +31,7 @@ function mkvmergeItem($file, $fileorig, $options, $info)
       } else {
         $cmdln .=
         " --audio-tracks " . $options['args']['language'];
+        " --default-language " . $options['args']['language'];
       }
       $cmdln .=
         " --no-attachments";
