@@ -102,8 +102,7 @@ function search($keywords, $options) {
     $output = [];
     $path = explode('|',$location)[0];
     if (file_exists("$path")) {
-      print ansiColor("blue") . "$path\r";
-      $cmdln = "find $path -not -name \"*.xml\" -iname \"*$keywords*\"";
+      $cmdln = "find $path -type f -not -name \"*.xml\" -iname \"*$keywords*\"";
       if ($options['args']['verbose']) {
         print ansiColor("green") . "$cmdln\n" . ansiColor();
       }

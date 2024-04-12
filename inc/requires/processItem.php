@@ -38,12 +38,6 @@ function processItem($dir, $item, $options, $args, $global)
   if (cleanup($file)) return($global);
   $quiet = ($options['args']['toolopt']) ? true : false; // --rename cmdline (super-true);
 
-
-  // Load Media File
-  $file                 = remove_illegal_chars($file, $options);
-  list($file, $info)    = ffprobe($file, $options, $quiet);
-  list($options, $info) = ffanalyze($file, $info, $options, $quiet);
-
   // Tools?
   if ($options['args']['rename'] > 1) { 
     rename_PlexStandards($file, $options);
@@ -56,6 +50,10 @@ function processItem($dir, $item, $options, $args, $global)
     return($global);
   }
 
+  // Load Media File
+  $file                 = remove_illegal_chars($file, $options);
+  list($file, $info)    = ffprobe($file, $options, $quiet);
+  list($options, $info) = ffanalyze($file, $info, $options, $quiet);
 
   // Set Exclude tag in media file (--exclude param given)
   if (
@@ -223,14 +221,17 @@ function processItem($dir, $item, $options, $args, $global)
         }
       }
     }
-    if (isset($fileorig) && isset($global['byteSaved']) && isset($global['reEncoded'])) {
+    if (isset($fileorig) && file_exists($file['basename']) && isset($global['byteSaved']) && isset($global['reEncoded'])) {
       $global['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
       $global['reEncoded']++;
     }
     if (isset($file) && file_exists($file['basename'])) {
       set_fileattrs($file, $options);
       touch($file['filename'] . "." . $options['args']['extension'], $mtime); //retain original timestamp
+      $file = rename_byCodecs($file, $options, $info);
+      $file = rename_PlexStandards($file, $options);      
     }
+
     if (isset($info) && isset($inforig)) {
       print ansiColor("blue") . "SIZE-STAT: " . ansiColor("green") . $file['basename'] . ansiColor("blue") . " ( " .
         "[orig] " . ansiColor("red") . formatBytes($inforig['format']['size'], 2, true) . ansiColor("blue") . " - " .
@@ -240,11 +241,6 @@ function processItem($dir, $item, $options, $args, $global)
     }
     if (isset($fileorig) && file_exists($fileorig['basename']) && preg_match('/\.orig\./', $fileorig['basename'])  && !$options['args']['keeporiginal']) {
       unlink($fileorig['basename']);
-    }
-
-    if (file_exists($file['basename'])) {
-      $file = rename_byCodecs($file, $options, $info);
-      $file = rename_PlexStandards($file, $options);      
     }
 
     print charTimes(80, "#", "blue") . "\n\n";

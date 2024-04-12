@@ -32,8 +32,13 @@
                                 //
                                 //  from:  movie.title.1999.Bluray.h264.DTS-HD.mkv
                                 //    to:  Movie Title (1999) [ WebDL x265 EAC3 ].mkv
-  "ignore_delete_prompt" => false,  
+  "ignore_delete_prompt" => -1 ,// ( 0 = prompt, 1 = ignore prompt: delete, -1 = ignore prompt: keep file and attempt to fix)
                                 // Skip prompt when deleting items that are missing audio or video tracks.
+                                // Either the media file doesn't contain the desired language, or the language tag is not set.
+                                // If a track exists and the language tag is not set, setting this to `true` deletes the file.
+                                // If a track exists and the language tag is not set, setting this to `false` prompts you if you'd like to delete it.
+                                // If you choose not to delete it, it encodes the file tags the track.  Best to check the file when prompted.
+                                // as there is no guarantee the track is the desired language.
   "ffmpeg_stats_period"  => "0.25",
                                 // Interval in seconds ffmpeg reports encoding stats while encoding.
   "media_paths_file" => __DIR__ . DIRECTORY_SEPARATOR . "media_path_keys.php", 

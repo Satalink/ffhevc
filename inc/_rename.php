@@ -6,7 +6,7 @@ function rename_PlexStandards($file, $options) {
   if ($options['args']['rename']) {
     $excluded_words = array('a', 'an', 'and', 'at', 'but', 'by', 'else', 'etc', 'for', 'from', 'if', 'in', 'into', 'is', 'of', 'or', 'nor', 'on', 'to', 'that', 'the', 'then', 'when', 'with');
     $allcap_words = array("us", "usa", "HEVC", "AVC", "acc", "ac3", "eac3", "hdr", "dvd", "sdtv", "dvd-r", "hdtv", "fbi", "pd", "i", "ii", "iii", "iv", "v", "tv", "vi", "vii", "viii", "ix", "x", "xl");
-    $camelcase_words = array("bluray" => "Bluray", "webrip" => "WebRip", "redux" => "Redux", "webdl" => "WebDL", 'truehd' => "TrueHD");
+    $camelcase_words = array("bluray" => "BluRay", "webrip" => "WebRIP", "redux" => "Redux", "webdl" => "WebDL", 'truehd' => "TrueHD");
     $filename = [];
     $title = [];
     $specs = [];

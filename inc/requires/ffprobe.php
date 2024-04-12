@@ -15,6 +15,7 @@ function ffprobe($file, $options, $quiet = false)
   $exec_args = "-v quiet -print_format xml -show_format -show_streams";
   $xml_file  = "./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml";
   $info      = array();
+  $language  = null;
   $xml       = null;
   if (!file_exists("." . DIRECTORY_SEPARATOR . ".xml")) {
     mkdir("./.xml");
@@ -44,18 +45,20 @@ function ffprobe($file, $options, $quiet = false)
     $xml               = simplexml_load_file("$xml_file");
   }
   $info                          = array();
-  $info['format']['format_name'] = getXmlAttribute($xml->format, "format_name");
-  $info['format']['duration']    = getXmlAttribute($xml->format, "duration");
-  $info['format']['size']        = getXmlAttribute($xml->format, "size");
-  $info['format']['bitrate']     = getXmlAttribute($xml->format, "bit_rate") ? getXmlAttribute($xml->format, "bit_rate") : getXmlAttribute($xml->format, "BPS");
-  $info['format']['nb_streams']  = getXmlAttribute($xml->format, "nb_streams");
-  $info['format']['probe_score'] = getXmlAttribute($xml->format, "probe_score");
-  $info['format']['exclude']     = getXmlAttribute($xml->format, "exclude") ? getXmlAttribute($xml->format, "exclude") : false;
-  $info['format']['mkvmerged']   = getXmlAttribute($xml->format, "mkvmerged") ? getXmlAttribute($xml->format, "mkvmerged") : false;
-  $info['format']['audioboost']  = false;
-  $info['video']                 = [];
-  $info['audio']                 = [];
-  $info['subtitle']              = [];
+  if (!$options['args']['toolopt']) {
+    $info['format']['format_name'] = getXmlAttribute($xml->format, "format_name");
+    $info['format']['duration']    = getXmlAttribute($xml->format, "duration");
+    $info['format']['size']        = getXmlAttribute($xml->format, "size");
+    $info['format']['bitrate']     = getXmlAttribute($xml->format, "bit_rate") ? getXmlAttribute($xml->format, "bit_rate") : getXmlAttribute($xml->format, "BPS");
+    $info['format']['nb_streams']  = getXmlAttribute($xml->format, "nb_streams");
+    $info['format']['probe_score'] = getXmlAttribute($xml->format, "probe_score");
+    $info['format']['exclude']     = getXmlAttribute($xml->format, "exclude") ? getXmlAttribute($xml->format, "exclude") : false;
+    $info['format']['mkvmerged']   = getXmlAttribute($xml->format, "mkvmerged") ? getXmlAttribute($xml->format, "mkvmerged") : false;
+    $info['format']['audioboost']  = false;
+    $info['video']                 = [];
+    $info['audio']                 = [];
+    $info['subtitle']              = [];
+  }
 
   if(isset($xml->format->tags)) {
     foreach ($xml->format->tags->tag as $tag) {
@@ -119,15 +122,17 @@ function ffprobe($file, $options, $quiet = false)
           }
           break;
         case "audio":
-          if (empty($info['audio'])) {
-            $info['audio']['index']       = getXmlAttribute($stream, "index") ? getXmlAttribute($stream, "index") : "";
-            $info['audio']['title']       = getXmlAttribute($stream, "title") ? getXmlAttribute($stream, "title") : "";
-            $info['audio']['codec_type']  = getXmlAttribute($stream, "codec_type") ? getXmlAttribute($stream, "codec_type") : "";
-            $info['audio']['codec_name']  = getXmlAttribute($stream, "codec_name") ? getXmlAttribute($stream, "codec_name") : "";
-            $info['audio']['channels']    = getXmlAttribute($stream, "channels") ? getXmlAttribute($stream, "channels") : "";
-            $info['audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate") ? getXmlAttribute($stream, "sample_rate") : "";
-            $info['audio']['bitrate']     = getXmlAttribute($stream, "bit_rate") ? getXmlAttribute($stream, "bit_rate") : "";
-            $info['audio']['audioboost']  = !empty($info['format']['audioboost']) ? $info['format']['audioboost'] : "";            
+          if (empty($info['audio']) && !isset($info['def_audio'])) {
+            if (empty($language)) {
+              $info['def_audio']['index']       = getXmlAttribute($stream, "index") ? getXmlAttribute($stream, "index") : "";
+              $info['def_audio']['title']       = getXmlAttribute($stream, "title") ? getXmlAttribute($stream, "title") : "";
+              $info['def_audio']['codec_type']  = getXmlAttribute($stream, "codec_type") ? getXmlAttribute($stream, "codec_type") : "";
+              $info['def_audio']['codec_name']  = getXmlAttribute($stream, "codec_name") ? getXmlAttribute($stream, "codec_name") : "";
+              $info['def_audio']['channels']    = getXmlAttribute($stream, "channels") ? getXmlAttribute($stream, "channels") : "";
+              $info['def_audio']['sample_rate'] = getXmlAttribute($stream, "sample_rate") ? getXmlAttribute($stream, "sample_rate") : "";
+              $info['def_audio']['bitrate']     = getXmlAttribute($stream, "bit_rate") ? getXmlAttribute($stream, "bit_rate") : "";
+              $info['def_audio']['audioboost']  = !empty($info['format']['audioboost']) ? $info['format']['audioboost'] : "";            
+            }
             if (!isset($stream->tags->tag)) {
               $stream->tags->tag = null;
             }
@@ -146,22 +151,30 @@ function ffprobe($file, $options, $quiet = false)
                   $info['audio']['bitrate']     = getXmlAttribute($stream, "bit_rate") ? getXmlAttribute($stream, "bit_rate") : "";
                   $info['audio']['audioboost']  = !empty($info['format']['audioboost']) ? $info['format']['audioboost'] : "";
                   $info['audio']['language'] = $tag_val;
+                  unset($info['def_audio']);
                 }
                 else {
+                  $info['audio'] = array();
                   continue;
                 }
               }
               if (preg_match('/^bps$/i', $tag_key)) {
-                if (empty($info['audio']['bitrate'])) {
+                if (!empty($info['audio']) && empty($info['audio']['bitrate'])) {
                   $info['audio']['bitrate'] = $tag_val;
+                } elseif (isset($info['def_audio'])) {
+                  $info['def_audio']['bitrate'] = $tag_val;
                 }
               } elseif (preg_match('/bit*rate$/i', $tag_key)) {
-                if (empty($info['audio']['bitrate'])) {
-                  if (preg_match("/k/i", $tag_val)) {
+                if (!empty($info['audio']) && empty($info['audio']['bitrate'])) {
+                  if (preg_match('/k/i', $tag_val)) {
                     $info['audio']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000);
+                  } elseif (preg_match('/m/i', $tag_val)) {
+                    $info['audio']['bitrate'] = (int) (filter_var($tag_val, FILTER_SANITIZE_NUMBER_INT) * 1000000);
                   } else {
                     $info['audio']['bitrate'] = (int) "$tag_val";
                   }
+                } elseif (isset($info['def_audio'])) {
+                  $info['def_audio']['bitrate'] = $tag_val;
                 }
               }
               $atags[$tag_key] = preg_match("/\s/", "$tag_val") ? "'" . $tag_val . "'" : $tag_val;
@@ -207,25 +220,33 @@ function ffprobe($file, $options, $quiet = false)
   ) {
     $missing = null;
     if ($file['extension'] == $options['args']['extension']) {
-      if (empty($info['video']))
-        $missing = "video";
-      if (empty($info['audio']))
-        $missing .= ' audio';
-      print ansiColor("red") . "NO EXISTING: " . ansiColor("green") . strtoupper($options['args']['language']) . ansiColor("red") . " TRACK(s) detected\n" . ansiColor();
+      if (empty($info['video'])) $missing = "video";
+      if (empty($info['audio'])) $missing .= ' audio';
       if (!$options['args']['ignore_delete_prompt']) {
+        print ansiColor("red") . "NO EXISTING: " . ansiColor("green") . strtoupper($options['args']['language']) . ansiColor("red") . " TRACK(s) detected\n" . ansiColor();        
         print "Delete " . ansiColor("green") . $file['basename'] . ansiColor() . "?  [y/N] >";
         $del_response = trim(fgets(STDIN));
-      }
-      if (preg_match('/y/i', $del_response) || $options['args']['ignore_delete_prompt'] ) {
-        unlink($file['basename']);
-       }  else {
-        $tag_data = [array("name" => "exclude", "value" => "1")];
-        $status = setMediaFormatTag($file, $tag_data, $options);
-        if (!$status) {
-          ffprobe($file, $options, true);
+      } 
+      elseif ($options['args']['ignore_delete_prompt'] > 0) {
+        $del_response = "y";
+      } else {
+        $del_response = "n";
+        if (isset($info['def_audio'])) {
+          $info['audio'] = $info['def_audio'];
+          unset($info['def_audio']);
         }
-        $info                       = array();
-        $options['args']['exclude'] = true;
+        mkvmergeItem($file, [] , $options , $info ); // mkvmerge with --default-language
+      }
+      if (preg_match('/y/i', $del_response)) {
+        unlink($file['basename']);
+      }  else {
+      //  $tag_data = [array("name" => "exclude", "value" => "1")];
+      //  $status = setMediaFormatTag($file, $tag_data, $options);
+      //  if (!$status) {
+      //    ffprobe($file, $options, true);
+      //  }
+      //  $options['args']['exclude'] = true;
+        $info = array();
         return (array($file, $info));
       }
     }
