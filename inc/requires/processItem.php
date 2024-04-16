@@ -53,7 +53,11 @@ function processItem($dir, $item, $options, $args, $global)
   // Load Media File
   $file                 = remove_illegal_chars($file, $options);
   list($file, $info)    = ffprobe($file, $options, $quiet);
-  list($options, $info) = ffanalyze($file, $info, $options, $quiet);
+  if (!empty($file) && !empty($options) && !empty($info)) {
+    list($options, $info) = ffanalyze($file, $info, $options, $quiet);
+  } else {
+    return($global);
+  }
 
   // Set Exclude tag in media file (--exclude param given)
   if (
