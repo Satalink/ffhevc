@@ -209,7 +209,7 @@ function processItem($dir, $item, $options, $args, $global)
   if (
     isset($inforig['format']['size']) &&
     isset($info['format']['size']) &&
-    (int) ($inforig['format']['size']) < ((int) $info['format']['size'])
+    (int) ($inforig['format']['size']) < ((int) $info['format']['size'] && !$options['args']['force'])
   ) {
     $reasons[] = "original filesize is smaller by ( " . formatBytes($info['format']['size'] - filesize($fileorig['basename']), 0, false) . " )";
   }
