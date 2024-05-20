@@ -94,9 +94,10 @@ function getCommandLineOptions($options, $args)
     --test          :flag:        print out ffmpeg generated command line only -- and exit
     --keys          :flag:        print out the defined keys -- and exit
     --force         :flag:        force encoding and bypass verification checks and delays
-    --override      :flag:        reencode and override existing files (redo all existing regardless)
+    --override      :flag:        reencode and override existing files (redo existing regardless)
     --exclude       :flag:        exclude from being processed (ignore this video), stored in .xml
     --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
+    --norename      :falg:        do not rename files
     --keeporiginal  :flag:        keep the original file and save as filename.orig.ext
     --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language\n\n" .
 
@@ -144,6 +145,9 @@ function getCommandLineOptions($options, $args)
   if (array_key_exists("nomkvmerge", $cmd_ln_opts)) {
     $options['args']['nomkvmerge'] = true;
   }
+  if (array_key_exists("norename", $cmd_ln_opts)) {
+    $options['args']['rename'] = false;
+  }
   if (array_key_exists("override", $cmd_ln_opts)) {
     $options['args']['override'] = true;
   }
@@ -153,7 +157,7 @@ function getCommandLineOptions($options, $args)
   if (array_key_exists("keeporiginal", $cmd_ln_opts)) {
     $options['args']['keeporiginal'] = true;
   }
-  if (array_key_exists("rename", $cmd_ln_opts)) {
+  if (array_key_exists("rename", $cmd_ln_opts) && !array_key_exists("norename", $cmd_ln_opts)) {
     $options['args']['rename'] = 2;
     $options['args']['toolopt'] = true;
   }
