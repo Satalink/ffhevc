@@ -37,6 +37,7 @@ function convertItem($file, $options, $info)
         return (array([], [] , $options));
       }
       if (file_exists($file['filename'] . "." . $options['args']['extension'])) {
+        unlink($fileorig['basename']);
         $fileorig = $file;
         $file     = pathinfo($file['filename'] . "." . $options['args']['extension']);
       }
