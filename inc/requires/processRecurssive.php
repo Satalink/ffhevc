@@ -11,16 +11,17 @@ function processRecursive($dir, $options, $args, $global)
   if (!isset($global['total_files'])) {
     print "scanning..\r";
     $cmdln = "find '" . $dir . "' -not -path '*_UNPACK_*' -not -path '*_TEST_*'";
-    $i     = 0;
+    $i = 0;
     foreach ($options['args']['extensions'] as $ext) {
-      if ($i)
-        $cmdln .= " -or";
+      if ($i > 0) {
+       $cmdln .= " -or";
+      }
       $cmdln .= " -name '*." . $ext . "'";
       $i++;
     }
     $cmdln .= "|wc -l";
     exec("$cmdln", $tf);
-    $global['total_files'] = (int) $tf[0];
+    $global['total_files'] = !empty($tf) ? (int) $tf[0] : 0;
   }
 
   if (!file_exists("$dir")) return($global);
