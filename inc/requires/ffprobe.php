@@ -10,8 +10,13 @@
 
 function ffprobe($file, $options, $quiet = false)
 {
-  if (empty($file) || empty($options))
+  if (
+      empty($file) || 
+      empty($options) 
+  ) {
     return (array([], []));
+  }
+
   $exec_args = "-v quiet -print_format xml -show_format -show_streams";
   $xml_file  = "./.xml" . DIRECTORY_SEPARATOR . $file['filename'] . ".xml";
   $info      = array();
