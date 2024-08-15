@@ -56,23 +56,15 @@ function ffanalyze($file, $info, $options, $quiet = false)
 
     if (!preg_match("/copy/i", $options['args']['video'])) {
       $pf_key = array_search($info['video']['pix_fmt'], $options['args']['pix_fmts']);
-      if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
-      print ansiColor("blue") . "Video Inspection ->" . ansiColor() .
-        $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
-        $info['video']['pix_fmt'] . "~=" . $options['args']['pix_fmts'][$pf_key] . "," .
-        $info['video']['height'] . "<=" . $options['video']['scale'] . "," .
-        round(($info['video']['bitrate'] / 1000), -2) . "k" . "<=" . round(($options['video']['bps'] / 1000), -2) . "k," .
-        $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
-      }
       if ($info['video']['height'] > $options['video']['scale']) {
         //hard set info to be used for bitrate calculation based on scaled resolution
         $info['video']['width']   = (($info['video']['width'] * $options['video']['scale']) / $info['video']['height']);
-        $info['video']['height']  = $options['video']['scale'];
-        $info['video']['bitrate'] = $options['video']['vps'];
+        $info['video']['bitrate'] = !empty($info['video']['bitrate']) ? $info['video']['bitrate'] : 0;
         $scale_option             = "scale=-1:" . $options['video']['scale'];
         //Recalculate target video bitrate based on projected output scale
-        $options['video']['vps'] = round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) . "k";
-        $options['video']['bps'] = (round((round($info['video']['height'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) * 1000);
+        $options['video']['vps'] = round((round($options['video']['scale'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) . "k";
+        $options['video']['bps'] = (round((round($options['video']['scale'] + round($info['video']['width'])) * $options['video']['quality_factor']), -2) * 1000);
+
       } else {
         $scale_option = null;
         if ($info['video']['bitrate'] != 0 && $info['video']['bitrate'] < $options['video']['bps']) {
@@ -81,6 +73,14 @@ function ffanalyze($file, $info, $options, $quiet = false)
           $options['video']['bps'] = $info['video']['bitrate'];
         }
       }
+      if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
+        print ansiColor("blue") . "Video Inspection ->" . ansiColor() .
+          $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
+          $info['video']['pix_fmt'] . "~=" . $options['args']['pix_fmts'][$pf_key] . "," .
+          $info['video']['height'] . "<=" . $options['video']['scale'] . "," .
+          round(($info['video']['bitrate'] / 1000), -2) . "k" . "<=" . round(($options['video']['bps'] / 1000), -2) . "k," .
+          $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
+      }      
 
       if ($info['video']['fps'] > $options['video']['fps']) {
         $fps_option = " -r " . $options['video']['fps'];
