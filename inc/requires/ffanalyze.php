@@ -73,14 +73,35 @@ function ffanalyze($file, $info, $options, $quiet = false)
           $options['video']['bps'] = $info['video']['bitrate'];
         }
       }
+
+      //Colorize Video Inspection
+      $disp_elements = [
+          $info['video']['codec'] => $options['video']['codec_name'],
+          $info['video']['pix_fmt'] => $options['args']['pix_fmts'][$pf_key],
+          $info['video']['height'] => (int)$options['video']['scale'],
+          round($info['video']['bitrate'] / 1000, -2)  => (int)round($options['video']['bps'] / 1000, -2),
+      ];
+      $disp_inspection = '';
+      foreach ($disp_elements as $disp_element_index => $disp_element_value) {
+        if ( is_integer($disp_element_value) ) {
+          $disp_element_int = true;
+          $disp_element_color = ($disp_element_index > 0 && $disp_element_index <= $disp_element_value) ? "green" : "red";
+        } else {
+          $disp_element_int = false;
+          $disp_element_color = ($disp_element_index == $disp_element_value) ? "green" : "red";
+        }
+        $disp_inspection .= ansiColor($disp_element_color) . $disp_element_index 
+                         .  ansiColor("blue") . ($disp_element_int ? "<=" : ":") 
+                         .  ansiColor("green") . $disp_element_value 
+                         .  ansiColor() .",";
+      }
       if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
-        print ansiColor("blue") . "Video Inspection ->" . ansiColor() .
-          $info['video']['codec'] . ":" . $options['video']['codec_name'] . "," .
-          $info['video']['pix_fmt'] . "~=" . $options['args']['pix_fmts'][$pf_key] . "," .
-          $info['video']['height'] . "<=" . $options['video']['scale'] . "," .
-          round(($info['video']['bitrate'] / 1000), -2) . "k" . "<=" . round(($options['video']['bps'] / 1000), -2) . "k," .
-          $options['video']['quality_factor'] . "," . $options['args']['override'] . "\n";
-      }      
+        $disp_override = !empty($options['args']['override']) ? ansiColor() . "|" . ansiColor("red") . $options['args']['override'] : '' ;
+        print ansiColor("blue") . "Video Inspection -> " . $disp_inspection 
+          . ansiColor("blue") . $options['video']['quality_factor'] 
+          . $disp_override
+          . "\n";
+      }
 
       if ($info['video']['fps'] > $options['video']['fps']) {
         $fps_option = " -r " . $options['video']['fps'];
@@ -187,17 +208,48 @@ function ffanalyze($file, $info, $options, $quiet = false)
         } elseif (!empty($info['audio']['bitrate']) && is_integer($info['audio']['bitrate'])) {
           $info['audio']['bps'] = (int) (filter_var($info['audio']['bitrate'], FILTER_SANITIZE_NUMBER_INT) * 1000);
         }
-        if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
-          print ansiColor("blue") . "Audio Inspection ->" . ansiColor() .
-            $info['audio']['codec_name'] . ":" . $options['audio']['codec'] . "," .
-            $info['audio']['bitrate'] . "<=" . $options['audio']['bitrate'] . "," .
-            $info['audio']['channels'] . "ch<=" . $options['audio']['channels'] . "ch," .
-            ($info['audio']['sample_rate'] / 1000) . "KHz<=" . ($options['audio']['sample_rate'] / 1000) . "KHz";
-          if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
-            print ansiColor("white") . "," . ansiColor("yellow") . "+" . $options['args']['audioboost'];
-          }
-          print "\n" . ansiColor();
-        }
+
+      //Colorize Audio Inspection
+      $disp_elements = [
+        $info['audio']['codec_name'] => $options['audio']['codec'],
+        (int) $info['audio']['bitrate']  => (int) $options['audio']['bitrate'],
+        $info['audio']['channels'] => (int) $options['audio']['channels'],
+        $info['audio']['sample_rate'] => (int) $options['audio']['sample_rate'],
+
+    ];
+    $disp_inspection = '';
+    foreach ($disp_elements as $disp_element_index => $disp_element_value) {
+      if ( is_integer($disp_element_value) ) {
+        $disp_element_int = true;
+        $disp_element_color = ($disp_element_index > 0 && $disp_element_index <= $disp_element_value) ? "green" : "red";
+      } else {
+        $disp_element_int = false;
+        $disp_element_color = ($disp_element_index == $disp_element_value) ? "green" : "red";
+      }
+      $disp_inspection .= ansiColor($disp_element_color) . $disp_element_index 
+                       .  ansiColor("blue") . ($disp_element_int ? "<=" : ":") 
+                       .  ansiColor("green") . $disp_element_value 
+                       .  ansiColor() .",";
+    }
+    if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
+      $disp_override = !empty($options['args']['override']) ? ansiColor() . "|" . ansiColor("red") . $options['args']['override'] : '' ;
+      print ansiColor("blue") . "Audio Inspection -> " . $disp_inspection 
+        . ansiColor("blue") . $options['video']['quality_factor'] 
+        . $disp_override
+        . "\n";
+    }
+
+        // if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
+        //   print ansiColor("blue") . "Audio Inspection ->" . ansiColor() .
+        //     $info['audio']['codec_name'] . ":" . $options['audio']['codec'] . "," .
+        //     $info['audio']['bitrate'] . "<=" . $options['audio']['bitrate'] . "," .
+        //     $info['audio']['channels'] . "ch<=" . $options['audio']['channels'] . "ch," .
+        //     ($info['audio']['sample_rate'] / 1000) . "KHz<=" . ($options['audio']['sample_rate'] / 1000) . "KHz";
+        //   if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
+        //     print ansiColor("white") . "," . ansiColor("yellow") . "+" . $options['args']['audioboost'];
+        //   }
+        //   print "\n" . ansiColor();
+        // }
         if ($info['audio']['channels'] < $options['audio']['channels'] || !isset($options['audio']['channels'])) {
           $options['audio']['channels'] = $info['audio']['channels'];
         }
