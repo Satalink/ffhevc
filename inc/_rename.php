@@ -55,12 +55,16 @@ function rename_PlexStandards($file, $options) {
       }
     }
     
-    $filename['newtitle'] = preg_split('/(\s|\.|\-|\_)/', $filespecs[0]);
-    $filename['year'] = isset($year) ? preg_replace('/\(|\)/', "", $year) : null;    
+    if(!empty($filespecs) && is_array($filespecs)) {
+      $filename['newtitle'] = preg_split('/(\s|\.|\-|\_)/', $filespecs[0]);
+      $filename['year'] = isset($year) ? preg_replace('/\(|\)/', "", $year) : null;    
 
-    $lastkey = key(array_slice($filespecs, -1, 1, true));
-    if (!empty($filespecs[$lastkey])) {
-      $filename['specs'] = preg_split('/(\.|\_|\-|\s+)/', $filespecs[1]);
+      $lastkey = key(array_slice($filespecs, -1, 1, true));
+      if (!empty($filespecs[$lastkey])) {
+        $filename['specs'] = preg_split('/(\.|\_|\-|\s+)/', $filespecs[1]);
+      }
+    } else {
+      return $file;
     }
 
     foreach ($filename['newtitle'] as $word) {
@@ -132,7 +136,7 @@ function rename_PlexStandards($file, $options) {
     }
   }
   cleanXMLDir($file['dirname'], $options, true);
-  return($file);
+  return $file;
 }
 
 function rename_byCodecs($file, $options, $info) {
@@ -192,7 +196,7 @@ function rename_byCodecs($file, $options, $info) {
     unlink($xml_file);
   }
   cleanXMLDir($file['dirname'], $options, true);
-  return($file);
+  return $file;
 }
 
 function remove_illegal_chars($file, $options) {
@@ -200,7 +204,7 @@ function remove_illegal_chars($file, $options) {
     rename($file['dirname'] . DIRECTORY_SEPARATOR . $file['basename'], $file['dirname'] . DIRECTORY_SEPARATOR . str_replace("'", "", ($file['filename'])) . "." . $file['extension']);
     $file = pathinfo($file['dirname'] . "/" . str_replace("'", "", ucwords($file['filename'])) . "." . $file['extension']);
   }  
-  return($file);
+  return $file;
 }
 
 
@@ -231,9 +235,9 @@ function get_resolution($scale) {
     case $scale > 2160 && $scale <= 2880:
       $res = "2880p";
       break;
-    case $scale > 2160 && $scale <= 4320:
+    case $scale > 2880 && $scale <= 4320:
       $res = "4320p";
       break; 
   }
-  return($res);
+  return $res;
 }
