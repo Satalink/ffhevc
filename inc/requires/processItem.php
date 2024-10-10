@@ -145,8 +145,11 @@ function processItem($dir, $item, $options, $args, $global)
   $file = rename_PlexStandards($file, $options);
  
   $cmdln = "nice --adjustment=" . $args['priority'] . " ffmpeg " .
-    "-hide_banner " .
-    "-v " . $options['args']['loglev'] . " " .
+    "-hide_banner ";
+    if (!$options['args']['verbose']) {
+      $cmdln .= "-v " . $options['args']['loglev'] . " ";
+    }
+    $cmdln .=     
     "-i \"" . $file['basename'] . "\" " .
     "-threads " . $options['args']['threads'] . " " .
     "-profile:v " . $options['profile'] . " " .
@@ -186,7 +189,7 @@ function processItem($dir, $item, $options, $args, $global)
   if ($options['args']['test']) {
     return ($global);  // preserve state at stop
   }
-  if (file_exists($file['filename'] . ".hevc") && file_exists($file['basename'])) {
+  if (filesize($file['filename'] . ".hevc") && file_exists($file['filename'] . ".hevc") && file_exists($file['basename'])) {
     $inforig = $info;
     rename($file['filename'] . ".hevc", $file['filename'] . "." . $options['args']['extension']);
     $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
@@ -197,6 +200,10 @@ function processItem($dir, $item, $options, $args, $global)
   if (empty($info))
     return ($global);
   $reasons = array();
+  if (file_exists($file['filename'] . ".hevc")) {
+    $reason[] = "There was an encoding error";
+    unlink($file['filename'] . ".hevc");
+  }
   if ($info['format']['probe_score'] < 100) {
     $reasons[] = "probe_score = " . $info['format']['probe_score'];
   }
@@ -225,7 +232,7 @@ function processItem($dir, $item, $options, $args, $global)
         }
       }
     }
-    if (isset($fileorig) && file_exists($file['basename']) && isset($global['byteSaved']) && isset($global['reEncoded'])) {
+    if (isset($fileorig) && file_exists($fileorig['basename']) && file_exists($file['basename']) && isset($global['byteSaved']) && isset($global['reEncoded'])) {
       $global['byteSaved'] += (filesize($fileorig['basename']) - ($info['format']['size']));
       $global['reEncoded']++;
     }

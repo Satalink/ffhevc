@@ -12,8 +12,11 @@ function convertItem($file, $options, $info)
     print ansiColor("red") . $file['filename'] . "." . $file['extension'] . "\n" . ansiColor();
     print ansiColor("blue") . "Format Convert: " . ansiColor("red") . $file['extension'] . ansiColor("blue") . " => " . ansiColor("green") . $options['args']['extension'] . "\n" . ansiColor();
     $cmdln = "ffmpeg " .
-      "-hide_banner " .
-      "-v " . $options['args']['loglev'] . " " .
+      "-hide_banner ";
+    if (!$options['args']['verbose']) {
+      $cmdln .= "-v " . $options['args']['loglev'] . " ";
+    }
+    $cmdln .= 
       "-i '" . $file['filename'] . "." . $file['extension'] . "' " .
       "-c copy " .
       "-sn " .
