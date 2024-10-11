@@ -199,7 +199,7 @@ function ffanalyze($file, $info, $options, $quiet = false)
           $options['args']['meta'] .= " -metadata:s:a:0 audioboost='" . $options['args']['audioboost'] . "'";
         }
         if ((!$options['args']['exclude'] && !$info['format']['exclude'])) {
-          $options['info']['audio'] = ansiColor("blue") . "Audio Inspection ->" . ansiColor("green") . "copy\n" . ansiColor();
+          $options['info']['audio'] = ansiColor("blue") . "Audio Inspection ->" . ansiColor("green") . " copy\n" . ansiColor();
         }
       } else {
         if (is_numeric($info['audio']['bitrate'])) {
@@ -238,18 +238,6 @@ function ffanalyze($file, $info, $options, $quiet = false)
         . $disp_override
         . "\n";
     }
-
-        // if (!$quiet && !$options['args']['exclude'] && !$info['format']['exclude']) {
-        //   print ansiColor("blue") . "Audio Inspection ->" . ansiColor() .
-        //     $info['audio']['codec_name'] . ":" . $options['audio']['codec'] . "," .
-        //     $info['audio']['bitrate'] . "<=" . $options['audio']['bitrate'] . "," .
-        //     $info['audio']['channels'] . "ch<=" . $options['audio']['channels'] . "ch," .
-        //     ($info['audio']['sample_rate'] / 1000) . "KHz<=" . ($options['audio']['sample_rate'] / 1000) . "KHz";
-        //   if (!empty($options['args']['audioboost']) && empty($info['audio']['audioboost'])) {
-        //     print ansiColor("white") . "," . ansiColor("yellow") . "+" . $options['args']['audioboost'];
-        //   }
-        //   print "\n" . ansiColor();
-        // }
         if ($info['audio']['channels'] < $options['audio']['channels'] || !isset($options['audio']['channels'])) {
           $options['audio']['channels'] = $info['audio']['channels'];
         }
