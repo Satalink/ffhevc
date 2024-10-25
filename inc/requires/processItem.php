@@ -189,7 +189,7 @@ function processItem($dir, $item, $options, $args, $global)
   if ($options['args']['test']) {
     return ($global);  // preserve state at stop
   }
-  if (filesize($file['filename'] . ".hevc") && file_exists($file['filename'] . ".hevc") && file_exists($file['basename'])) {
+  if (file_exists($file['filename'] . ".hevc") && filesize($file['filename'] . ".hevc") && file_exists($file['basename'])) {
     $inforig = $info;
     rename($file['filename'] . ".hevc", $file['filename'] . "." . $options['args']['extension']);
     $file = pathinfo("$dir" . DIRECTORY_SEPARATOR . $file['filename'] . "." . $options['args']['extension']);
