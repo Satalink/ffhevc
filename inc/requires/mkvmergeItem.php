@@ -8,6 +8,13 @@ function mkvmergeItem($file, $fileorig, $options, $info)
 {
   //Preprocess with mkvmerge (if in path)
   $mkvm_ext = ".mkv.merge";
+
+  //Perms test and fix (sometimes USB drives get perm wacked)
+  if (`which setfacl 2> /dev/null`) {
+    $cmdln = 'setfacl --set "user::rw-,group::r--,other::r--"' . ' "' . $file['basename'] . '"';
+     system("$cmdln 2>&1", $status);
+  }
+
   if (empty($file) || empty($options) || empty($info)) return (array([], [], []));
   if (file_exists($file['filename'] . $mkvm_ext)) unlink ($file['filename'] . $mkvm_ext); // leftover detected
   if (!isset($fileorig)) $fileorig =[];
@@ -21,7 +28,7 @@ function mkvmergeItem($file, $fileorig, $options, $info)
         !$options['args']['exclude']
       ) || $options['args']['override']
     ) { 
-      print ansiColor("blue") . "Preprocessing: " . ansiColor("red") . $file['basename'] . ansiColor() . " (" . formatBytes(filesize($file['basename']), 2, true) . ")\n" . ansiColor();
+      print ansiColor("blue") . "Preprocessing: " . ansiColor("red") . $file['basename'] . ansiColor() . " (" . formatBytes(filesize( '"' . $file['basename']) . '"', 2, true) . ")\n" . ansiColor();
       $cmdln    = "mkvmerge";
       if (!empty($options['args']['language'])) {
         $cmdln .=
