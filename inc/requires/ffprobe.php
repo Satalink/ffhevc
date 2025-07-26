@@ -102,8 +102,12 @@ function ffprobe($file, $options, $quiet = false)
             $info['video']['color_space']     = getXmlAttribute($stream, "color_space");
             $info['video']['color_transfer']  = getXmlAttribute($stream, "color_transfer");
             $info['video']['color_primaries'] = getXmlAttribute($stream, "color_primaries");
-            $info['video']['hdr']             = preg_match('/bt[27][0][29][0]?/', getXmlAttribute($stream, "color_primaries")) ? getXmlAttribute($stream, "color_primaries") : false;
-
+            $info['video']['hdr']             = 
+                                !$options['args']['nohdr'] ? (
+                                  preg_match('/bt[2][0][2][0]?/', getXmlAttribute($stream, "color_primaries")) ? 
+                                    getXmlAttribute($stream, "color_primaries") 
+                                  : false) 
+                                : false;
             if (!isset($stream->tags->tag)) {
               $stream->tags->tag = null;
             }

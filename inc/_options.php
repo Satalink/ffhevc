@@ -97,6 +97,7 @@ function getCommandLineOptions($options, $args)
     --override      :flag:        reencode and override existing files (redo existing regardless)
     --exclude       :flag:        exclude from being processed (ignore this video), stored in .xml
     --nomkvmerge    :flag:        do not restructure MKV container with mkvmerge before encoding (if installed and in PATH)
+    --nohdr         :flag:        do not encode HDR metadata
     --norename      :falg:        do not rename files
     --keeporiginal  :flag:        keep the original file and save as filename.orig.ext
     --filterforiegn :flag:        strip foriegn languages NOT matching \$options['args']['language'] OR --language\n\n" .
@@ -144,6 +145,9 @@ function getCommandLineOptions($options, $args)
   }
   if (array_key_exists("nomkvmerge", $cmd_ln_opts)) {
     $options['args']['nomkvmerge'] = true;
+  }
+  if (array_key_exists("nohdr", $cmd_ln_opts)) {
+    $options['args']['nohdr'] = true;
   }
   if (array_key_exists("norename", $cmd_ln_opts)) {
     $options['args']['rename'] = false;
@@ -230,59 +234,60 @@ function getDefaultOptions($args, $location_config)
    *    NOTE: conf/media_paths_keys OVERRIDE THESE VALUES
    */
   // arg=value i.e: `--quality_factor=1.5`     (higher quaility = higher bit rate)
-  $options['video']['quality_factor']        = !empty($args['quality_factor']) ? $args['quality_factor'] : 1.33;
-  $options['video']['vmin']                  = !empty($args['video_qmin']) ? $args['video_qmin'] : 0;
-  $options['video']['vmax']                  = !empty($args['video_qmax']) ? $args['video_qmax'] : 29;
-  $options['video']['fps']                   = !empty($args['video_fps']) ? $args['video_fps'] : 29.97;
-  $options['video']['scale']                 = !empty($args['video_max_scale']) ? $args['video_max_scale'] : 2160;  // max video resolution setting
-  $options['video']['contrast']              = 1;
-  $options['video']['brightness']            = 0;
-  $options['video']['saturation']            = 1;
-  $options['video']['gamma']                 = 1;
-  $options['video']['hdr']['color_range']    = array("tv"); // "tv", "pc"
-  $options['video']['hdr']['codec']          = "hevc_nvenc";  // = "libx265" If you're video card does not support HDR;
-  $options['video']['hdr']['pix_fmt']        = array("p010le", "p010le", "p010le");
-  $options['video']['hdr']['color_primary']  = array("bt601|", "bt709", "bt2020");
-  $options['video']['hdr']['color_transfer'] = array("bt601", "bt709", "smpte2084");
-  $options['video']['hdr']['color_space']    = array("bt601", "bt709", "bt2020nc");
-  $options['video']['profile']               = !empty($args['video_profile']) ? $args['video_profile'] : "WEBDL";
-  $options['audio']['codec']       = !empty($args['audio_codec']) ? $args['audio_codec'] : "eac3";
-  $options['audio']['codecs']      = !empty($args['audio_codecs']) ? $args['audio_codecs'] : array("ac3", "eac3");
-  $options['audio']['channels']    = !empty($args['audio_channels']) ? $args['audio_channels'] : 6;
-  $options['audio']['bitrate']     = !empty($args['audio_bitrate']) ? $args['audio_bitrate'] : "720k";
-  $options['audio']['sample_rate'] = !empty($args['audio_sample_rate']) ? $args['audio_sample_rate'] : 48000;
-  $options['args']['audioboost']           = !empty($args['audio_boost']) ? $args['audio_boost'] : false;
-  $options['args']['extension']            = !empty($args['extension']) ? $args['extension'] : "mkv";
-  $options['args']['extensions']           = array("mkv", "mp4", "mpeg", "m4v", "ts", "m2ts", "avi", "av1", "3gp", "flv", "fv4", "ogv", "webm", "wmv", "mov", "vob");  // acceptable formats to convert/encode
-  $options['args']['maxmuxqueuesize']      = !empty($args['maxmuxqueuesize']) ?$args['maxmuxqueuesize'] : 8192;
-  $options['args']['owner']                = !empty($args['owner']) ? $args['owner'] : false;
-  $options['args']['group']                = !empty($args['group']) ? $args['group'] : false;
-  $options['args']['rename']               = !empty($args['rename']) ?: 0;
-  $options['args']['language']             = !empty($args['language']) ? $args['language'] : null;
-  $options['args']['stats_period']         = !empty($args['ffmpeg_stats_period']) ? $args['ffmpeg_stats_period'] : "0.5";  // ffmpeg stats reporting frequency in seconds
-  $options['args']['cooldown']             = !empty($args['cooldown']) ? $args['cooldown'] : 0;
+  $options['video']['quality_factor']         = !empty($args['quality_factor']) ? $args['quality_factor'] : 1.33;
+  $options['video']['vmin']                   = !empty($args['video_qmin']) ? $args['video_qmin'] : 0;
+  $options['video']['vmax']                   = !empty($args['video_qmax']) ? $args['video_qmax'] : 29;
+  $options['video']['fps']                    = !empty($args['video_fps']) ? $args['video_fps'] : 29.97;
+  $options['video']['scale']                  = !empty($args['video_max_scale']) ? $args['video_max_scale'] : 2160;  // max video resolution setting
+  $options['video']['contrast']               = 1;
+  $options['video']['brightness']             = 0;
+  $options['video']['saturation']             = 1;
+  $options['video']['gamma']                  = 1;
+  $options['video']['hdr']['color_range']     = array("tv"); // "tv", "pc"
+  $options['video']['hdr']['codec']           = "hevc_nvenc";  // = "libx265" If you're video card does not support HDR;
+  $options['video']['hdr']['pix_fmt']         = array("p010le", "p010le", "p010le");
+  $options['video']['hdr']['color_primary']   = array("bt709|", "bt709", "bt2020");
+  $options['video']['hdr']['color_transfer']  = array("bt709", "bt709", "smpte2084");
+  $options['video']['hdr']['color_space']     = array("bt709", "bt709", "bt2020nc");
+  $options['video']['profile']                = !empty($args['video_profile']) ? $args['video_profile'] : "WEBDL";
+  $options['audio']['codec']                  = !empty($args['audio_codec']) ? $args['audio_codec'] : "eac3";
+  $options['audio']['codecs']                 = !empty($args['audio_codecs']) ? $args['audio_codecs'] : array("ac3", "eac3");
+  $options['audio']['channels']               = !empty($args['audio_channels']) ? $args['audio_channels'] : 6;
+  $options['audio']['bitrate']                = !empty($args['audio_bitrate']) ? $args['audio_bitrate'] : "720k";
+  $options['audio']['sample_rate']            = !empty($args['audio_sample_rate']) ? $args['audio_sample_rate'] : 48000;
+  $options['args']['audioboost']              = !empty($args['audio_boost']) ? $args['audio_boost'] : false;
+  $options['args']['extension']               = !empty($args['extension']) ? $args['extension'] : "mkv";
+  $options['args']['extensions']              = array("mkv", "mp4", "mpeg", "m4v", "ts", "m2ts", "avi", "av1", "3gp", "flv", "fv4", "ogv", "webm", "wmv", "mov", "vob");  // acceptable formats to convert/encode
+  $options['args']['maxmuxqueuesize']         = !empty($args['maxmuxqueuesize']) ?$args['maxmuxqueuesize'] : 8192;
+  $options['args']['owner']                   = !empty($args['owner']) ? $args['owner'] : false;
+  $options['args']['group']                   = !empty($args['group']) ? $args['group'] : false;
+  $options['args']['rename']                  = !empty($args['rename']) ?: 0;
+  $options['args']['language']                = !empty($args['language']) ? $args['language'] : null;
+  $options['args']['stats_period']            = !empty($args['ffmpeg_stats_period']) ? $args['ffmpeg_stats_period'] : "0.5";  // ffmpeg stats reporting frequency in seconds
+  $options['args']['cooldown']                = !empty($args['cooldown']) ? $args['cooldown'] : 0;
+  $options['args']['nohdr']                   = false; 
 
   //Operational args (if detected is_enabled :: no value to pass)
-  $options['args']['test']              = false;
-  $options['args']['verbose']           = !empty($options['args']['test']) ? $options['args']['test'] : false;  // if test, assume verbose
-  $options['args']['keys']              = false;
-  $options['args']['force']             = false;
-  $options['args']['nomkvmerge']        = false;
-  $options['args']['override']          = false;
-  $options['args']['followlinks']       = false;
-  $options['args']['remove_illegal_chars'] = !empty($args['remove_illegal_chars']) ?: false;
-  $options['args']['ignore_delete_prompt'] = !empty($args['ignore_delete_prompt']) ? $args['ignore_delete_prompt'] : false;
-  $options['args']['exclude']           = false;  // if true, the xml file will be flagged exclude for the processed the media.
-  $options['args']['keeporiginal']      = false; //if true, the original file will be retained. (renamed as filename.orig.ext)
-  $options['args']['permissions']       = 0664; //Set file permission to (int value).  Set to False to disable.
-  $options['args']['filter_foreign']    = !empty($args['filter_foreign']) ? $args['filter_foreign'] : false;
-  $options['args']['delay']             = 0; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
-  $options['args']['loglev']            = "quiet";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
-  $options['args']['threads']           = 0;
-  $options['args']['stop']              = isset($args['stop']) ? $args['stop'] : "/tmp/hevc.stop";
-  $options['args']['toolopt']           = false;
-  $options['args']['remove_stale_stop'] = isset($args['remove_stale_stop']) ? $args['remove_stale_stop'] : false;
-  $options['args']['pix_fmts']          = array(//acceptable pix_fmts
+  $options['args']['test']                    = false;
+  $options['args']['verbose']                 = !empty($options['args']['test']) ? $options['args']['test'] : false;  // if test, assume verbose
+  $options['args']['keys']                    = false;
+  $options['args']['force']                   = false;
+  $options['args']['nomkvmerge']              = false;
+  $options['args']['override']                = false;
+  $options['args']['followlinks']             = false;
+  $options['args']['remove_illegal_chars']    = !empty($args['remove_illegal_chars']) ?: false;
+  $options['args']['ignore_delete_prompt']    = !empty($args['ignore_delete_prompt']) ? $args['ignore_delete_prompt'] : false;
+  $options['args']['exclude']                 = false;  // if true, the xml file will be flagged exclude for the processed the media.
+  $options['args']['keeporiginal']            = false; //if true, the original file will be retained. (renamed as filename.orig.ext)
+  $options['args']['permissions']             = 0664; //Set file permission to (int value).  Set to False to disable.
+  $options['args']['filter_foreign']          = !empty($args['filter_foreign']) ? $args['filter_foreign'] : false;
+  $options['args']['delay']                   = 0; // File must be at least [delay] seconds old before being processes (set to zero to disable) Prevents process on file being assembled or moved.
+  $options['args']['loglev']                  = "quiet";  // [quiet, panic, fatal, error, warning, info, verbose, debug]
+  $options['args']['threads']                 = 0;
+  $options['args']['stop']                    = isset($args['stop']) ? $args['stop'] : "/tmp/hevc.stop";
+  $options['args']['toolopt']                 = false;
+  $options['args']['remove_stale_stop']       = isset($args['remove_stale_stop']) ? $args['remove_stale_stop'] : false;
+  $options['args']['pix_fmts']                = array(//acceptable pix_fmts
     "yuv420p",
     "yuv420p10le",
     "p010le",
@@ -349,7 +354,7 @@ function getLocationOptions($options, $args, $dir)
       $options['video']['saturation']     = $location_param_array[10];
       $options['video']['gamma']          = $location_param_array[11];
       if (array_key_exists(12, $location_param_array)) {
-        $options['args']['destination'] = $location_param_array[12];
+        $options['args']['destination']   = $location_param_array[12];
       }
     }
   }
@@ -361,13 +366,13 @@ function getLocationOptions($options, $args, $dir)
 /** ---------------------------------------------------------------------------------------------------- */
 function setOption($option)
 {
-  $options['profile']                  = $option[0];
-  $options['format']                   = $option[1];
-  $options['args']['extension']        = str_replace('.', '', $option[2]);
-  $options['video']['codec']           = $option[3];
-  $options['video']['pix_fmt']         = $option[4];
-  $options['video']['codec_name']      = $option[5];
-  $options['video']['codec_long_name'] = $option[6];
+  $options['profile']                     = $option[0];
+  $options['format']                      = $option[1];
+  $options['args']['extension']           = str_replace('.', '', $option[2]);
+  $options['video']['codec']              = $option[3];
+  $options['video']['pix_fmt']            = $option[4];
+  $options['video']['codec_name']         = $option[5];
+  $options['video']['codec_long_name']    = $option[6];
   return ($options);
 }
 

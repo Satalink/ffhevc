@@ -109,7 +109,8 @@ function processItem($dir, $item, $options, $args, $global)
     $options['video']['fps'] = $info['video']['fps'];
     $fps_option              = "";
   }
-  if ($info['video']['hdr']) {
+  if ($info['video']['hdr'] && !$options['args']['nohdr']) {
+    
     $resolution = isset($options['video']['scale']) ? (int) $options['video']['scale'] : (int) $info['video']['height'];
     switch (true) {
       case $resolution <= 480:
