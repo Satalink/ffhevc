@@ -29,9 +29,10 @@ function mkvmergeItem($file, $fileorig, $options, $info)
         !$options['args']['exclude']
       ) || $options['args']['override']
     ) { 
+      $filebase = $file['basename'];
       print ansiColor("blue") . "Preprocessing: " . 
             ansiColor("red") . $file['basename'] . 
-            ansiColor() . " (" . formatBytes(filesize($file['basename']), 2, true) . ")\n" .
+            ansiColor() . " (" . formatBytes(filesize("$filebase"), 2, true) . ")\n" .
             ansiColor();
       $cmdln    = "mkvmerge";
       if (!empty($options['args']['language'])) {
