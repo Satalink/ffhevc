@@ -99,9 +99,7 @@ function processItem($dir, $item, $options, $args, $global)
     $options['args']['video'] = "-vcodec copy";
   }
   if (preg_match('/p10/', $options['video']['pix_fmt'])) {
-    $options['profile'] = "main10";
-  } else {
-    $options['profile'] = "main";
+      $options['profile'] = "main10";
   }
   if ($info['video']['fps'] > $options['video']['fps']) {
     $fps_option = " -r " . $options['video']['fps'];
@@ -167,11 +165,12 @@ function processItem($dir, $item, $options, $args, $global)
     print "\n\n" . ansiColor("green") . "$cmdln\n\n" . ansiColor();
   }
   if (!$options['args']['test'] && !isStopped($options)) {
-    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("yellow") . $file['basename'] . ansiColor() . " (" . formatBytes(filesize($file['basename']), 2, true) . ")" . ansiColor("yellow") . "\n";
+    $filebase = $file['basename'];
+    print ansiColor("blue") . "HEVC Encoding: " . ansiColor("yellow") . $file['basename'] . ansiColor() . " (" . formatBytes(filesize($filebase), 2, true) . ")" . ansiColor("yellow") . "\n";
     if (isset($options['info']['video'])) {
       $rts = preg_match('/copy/', $options['info']['video']) ? 11 : 38;
     } else {
-      $rts = 38;
+      $rts = 40;
     }
     print charTimes($rts, " ") . "run time=" . seconds_toTime($info['format']['duration']) . ansiColor() . "\n";
     exec("$cmdln", $output, $status);
