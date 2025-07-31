@@ -245,9 +245,9 @@ function processItem($dir, $item, $options, $args, $global)
 
     if (isset($info) && isset($inforig)) {
       print ansiColor("blue") . "SIZE-STAT: " . ansiColor("green") . $file['basename'] . ansiColor("blue") . " ( " .
-        "[orig] " . ansiColor("red") . formatBytes($inforig['format']['size'], 2, true) . ansiColor("blue") . " - " .
-        "[new] " . ansiColor("yellow") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " .
-        "[diff] " . ansiColor("green") . formatBytes(($inforig['format']['size'] - $info['format']['size']), 2, true) . ansiColor("blue") . " " .
+        "[orig] " . ansiColor("white") . formatBytes($inforig['format']['size'], 2, true) . ansiColor("blue") . " - " .
+        "[new] " . ansiColor("green") . formatBytes($info['format']['size'], 2, true) . ansiColor('blue') . " = " .
+        "[diff] " . ansiColor("red") . formatBytes(($inforig['format']['size'] - $info['format']['size']), 2, true) . ansiColor("blue") . " " .
         ")\n" . ansiColor();
     }
     if (isset($fileorig) && file_exists($fileorig['basename']) && preg_match('/\.orig\./', $fileorig['basename'])  && !$options['args']['keeporiginal']) {
