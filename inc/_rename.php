@@ -141,7 +141,7 @@ function rename_PlexStandards($file, $options) {
 
 function rename_byCodecs($file, $options, $info) {
   $filename    = $file['filename'];
-  $resolutions = array('480p', '720p', '1080p', '2160p', ' SD', ' HD', ' UHD');
+  $resolutions = array('480p', '720p', '1080p', '2160p', 'SDTV', 'SD', 'HDTV', 'HD', 'UHDTV', 'UHD' );
   $vcodecs     = array("h264", "h.264", "h-264", "x-264", "x.264", "x264", "264", "h265", "h.265", "h-265", "x-265", "x.265", "x265", "265", "avc", "vc1", "hevc");
   $acodecs     = array('AAC', 'EAC3', 'AC3', 'AC4', 'MP3', 'OGG', 'FLAC', 'WMA', 'ddp5.1', 'ddp7.1', 'DTS-HD', 'DTS', 'TrueHD', 'PPCM', 'DST', 'OSQ', 'DCT', );
   $camelcase_words = array("bluray" => "Bluray", "webrip" => "WebRip", "redux" => "Redux", "webdl" => "WebDL", 'truehd' => "TrueHD");
@@ -212,7 +212,7 @@ function get_resolution($scale) {
   if (empty($scale)) { print "EMPTY\n"; return; }
   switch ($scale) {
     case $scale > 180 && $scale <= 240:
-      $res = "480p";
+      $res = "240p";
       break;
     case $scale > 240 && $scale <= 360:
       $res = "360p";

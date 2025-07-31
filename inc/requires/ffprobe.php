@@ -231,7 +231,7 @@ function ffprobe($file, $options, $quiet = false)
     if ($file['extension'] == $options['args']['extension']) {
       if (empty($info['video'])) $missing = "video";
       if (empty($info['audio'])) $missing .= ' audio';
-      if (!$options['args']['ignore_delete_prompt']) {
+      if ($options['args']['ignore_delete_prompt'] == 0) {
         print ansiColor("red") . "NO EXISTING: " . ansiColor("green") . strtoupper($options['args']['language']) . ansiColor("red") . " TRACK(s) detected\n" . ansiColor();        
         print "Delete " . ansiColor("green") . $file['basename'] . ansiColor() . "?  [y/N] >";
         $del_response = trim(fgets(STDIN));
