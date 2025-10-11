@@ -25,8 +25,8 @@ function processItem($dir, $item, $options, $args, $global)
     $percent               = round((($global['processed'] / $global['total_files']) * 100), 0);
     if ($percent > 0) {
       $global['percent'] = $percent;
-      $key = isset($args['key']) ? $args['key'] : 'UNK';
-      print "  [" . $key . "] (" . $global['processed'] . "/" . $global['total_files'] . ") " . $percent . "%\r";
+      $key = isset($args['key']) ? "[" . $args['key'] . "] " : '';
+      print "  " . $key . " (" . $global['processed'] . "/" . $global['total_files'] . ") " . $percent . "%\r";
     }
   }
 
