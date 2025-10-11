@@ -67,18 +67,6 @@ function mkvmergeItem($file, $fileorig, $options, $info)
       }
       if (!$options['args']['test']) {
         system("$cmdln 2>&1", $status);
-        if ($status == 255) {
-          // status(255) => CTRL-C
-          // Restore and Cleanup
-          if(!empty($fileorig) && !empty($file)) {
-            rename($fileorig['basename'], $file['basename']); 
-            if(file_exists($file['filename'] . $mkvm_ext)) {
-              unlink($file['filename'] . $mkvm_ext);
-            }
-          }        
-          stop($options, time());
-          return (array([], []));
-        }
         if (file_exists($file['filename'] . $mkvm_ext) && file_exists($file['basename'])) {
           if (empty($fileorig)) {
             rename($file['basename'], $file['filename'] . ".orig." . $file['extension']);
@@ -92,5 +80,6 @@ function mkvmergeItem($file, $fileorig, $options, $info)
       }
     }
   }
+
   return (array($file, $fileorig, $options));
 }

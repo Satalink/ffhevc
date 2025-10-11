@@ -46,7 +46,7 @@ function get_CommandLineArgs($options, $argv, $args, $global)
     }
 
     //Defined Key, Scan, and Process
-    if (isset($args['key'])) {
+    if (isset($args['key']) && $args['key'] != "keys") {
       $location     = str_replace(" ", "\ ", $options['locations'][$args['key']]);
       $key          = $args['key'];
       $dirs["$key"] = explode("|", $location)[0];
