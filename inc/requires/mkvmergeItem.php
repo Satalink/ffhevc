@@ -77,7 +77,7 @@ function mkvmergeItem($file, $fileorig, $options, $info)
           }
         }        
         stop($options, time());
-        return (array([], []));
+        return (array([], [], $options));
       }
         if (file_exists($file['filename'] . $mkvm_ext) && file_exists($file['basename'])) {
           if (empty($fileorig)) {
